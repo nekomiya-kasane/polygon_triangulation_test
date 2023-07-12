@@ -2,14 +2,12 @@
 
 #include "node_allocator.h"
 
-
 struct Triangle
 {
   Index A, B, C;
 };
 
 using Triangles = std::vector<Triangle>;
-
 
 class Triangulator
 {
@@ -21,7 +19,7 @@ protected:
   void BuildQueryTree();
 
   // query
-  RegionNode *Query(const Vec2 &point);
+  NodeIndex Query(const Vec2 &point);
   NodeIndex QueryFrom(NodeIndex nodeID, const Vec2 &point);
 
   // tree
@@ -29,14 +27,15 @@ protected:
   SegmentNode *AddSegment(Index fromID, Index toID);
 
   [[nodiscard]] NodeIndex SplitRegionByPoint(NodeIndex regionID, Index pointID);
-  [[nodiscard]] RegionNode *SplitRegionByEdge(RegionNode *region,
-                                              const VertexNode *topVertex,
-                                              const VertexNode *bottomVertex);
+  [[nodiscard]] RegionNode *SplitRegionByEdge(NodeIndex regionID,
+                                              NodeIndex highVertexID,
+                                              NodeIndex lowVertexID, bool downward, int catagory);
 
-  NodeIndex &GetVertexRegion(NodeIndex id);
+  NodeIndex GetVertexRegion(NodeIndex id);
   void UpdateVertexPosition();
 
   RegionNode *FindRegionBelow(RegionNode *region) const;
+  NodeIndex FindRegionBelow(NodeIndex vertexID, const Vec2 &ref, int *catagory);
   void UpdateFirstSplitRegion(RegionNode *region);
   void UpdateMiddleSplitRegion(RegionNode *region);
   void UpdateLastSplitRegion(RegionNode *region);
@@ -53,8 +52,9 @@ protected:
   // configuration
   bool _compactPoints     = false; /* false: vertex[0] same as vertex[-1] */
   bool _checkIntersection = false; /* detect intersection of segments */
-  unsigned short _phase   = 800;   /* phase to update region cache of vertices */
+  unsigned short _phase   = 0;     /* phase to update region cache of vertices */
   double _tol             = 1e-10; /* tolerance */
+  void RefinePhase();
 
   // input
   Vec2Set _points;
@@ -65,8 +65,19 @@ protected:
 
   // variables
   NodeIndexes _vertices, _segments; /* same count as points */
-
   size_t _vertexCount = 0, _segmentCount = 0;
+  NodeIndexes _endIndices;
+
+  struct BelowPolygonInfo
+  {
+    NodeIndex left = INVALID_INDEX, middle = INVALID_INDEX, right = INVALID_INDEX;
+
+    inline size_t Count() const
+    {
+      return left != INVALID_INDEX + middle != INVALID_INDEX + right != INVALID_INDEX;
+    }
+  };
+  std::vector<BelowPolygonInfo> _belowInfo;
 
   std::vector<bool> _vertexFlag;
   std::unordered_map<NodeIndex, NodeIndex> _vertexTreePosition;  // is

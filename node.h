@@ -89,3 +89,4 @@ struct NodeTrait<Node::Type::VERTEX>
 {
   using type = VertexNode;
 };
+
