@@ -4,19 +4,16 @@
 #include <cassert>
 #include <random>
 
-Triangulator::~Triangulator()
+NodeIndex Triangulator::AddVectex(const Vec2 &pointLoc, Index pointID)
 {
-  free(_data);
-}
+  auto &nodeID = _vertices[pointID];
+  if (ValidID(nodeID)) /* already added */
+    return nodeID;
 
-VertexNode *Triangulator::AddVectex(const Vec2 &point, Index id)
-{
-  auto &node = _vertices[id];
-  if (node)
-    return node;
+  NodeIndex regionID = GetVertexRegion(pointID);
+  SplitRegionByPoint(regionID, pointID);
 
-  RegionNode *&curRegion = ResolveVertexRegionCache(id);
-  SplitRegionByPoint(curRegion, point);
+  return nodeID;
 }
 
 SegmentNode *Triangulator::AddSegment(Index fromInd, Index toInd)
@@ -70,29 +67,35 @@ void Triangulator::AddPolygon(const Vec2Set &vertices)
   _permutation.push_back({oldSize + incrementSize - 1, oldSize});
 }
 
-RegionNode *Triangulator::SplitRegionByPoint(RegionNode *region, const Vec2 &point)
+NodeIndex Triangulator::SplitRegionByPoint(NodeIndex regionID, Index pointID)
 {
-  RegionNode *higherRegion = CreateNode<Node::REGION>(&region);
-  RegionNode *lowerRegion  = CreateNode<Node::REGION>();
+  // create leaves
+  NodeIndex higherRegionID = _alloc.DuplicateNode<Node::REGION>(regionID);
+  NodeIndex lowerRegionID  = _alloc.DuplicateNode<Node::REGION>(regionID);
 
-  // original region to vertex
-  VertexNode *&&vertex = CastNode<Node::VERTEX>(region);
-  vertex->left         = higherRegion;
-  vertex->right        = lowerRegion;
-  vertex->pos          = point;
+  RegionNode *higherRegion = _alloc.GetNode<Node::REGION>(higherRegionID),
+             *lowerRegion  = _alloc.GetNode<Node::REGION>(lowerRegionID);
 
-  lowerRegion->highVertex = vertex;
-  lowerRegion->lowVertex  = region->lowVertex;
-  region->lowVertex       = vertex;
+  // turn the parent region node into vertex node
+  NodeIndex vertexID = regionID;
+  VertexNode *vertex = _alloc.RecastNode<Node::VERTEX>(vertexID);
+  vertex->pos        = _points[pointID];
+  vertex->pointID    = pointID;
+  vertex->left       = higherRegionID;
+  vertex->right      = lowerRegionID;
+  _vertices.push_back(vertexID);
+
+  lowerRegion->highVertexID = vertexID;
+  higherRegion->lowVertexID = vertexID;
 
   // todo: maintain neighbor
-  lowerRegion->leftSegment  = higherRegion->leftSegment;
-  lowerRegion->rightSegment = higherRegion->rightSegment;
-  // any other?
-
+  higherRegion->llID = INVALID_INDEX;
+  higherRegion->lrID = lowerRegionID;
+  lowerRegion->hlID  = higherRegionID;
+  lowerRegion->hrID  = INVALID_INDEX;
   // do I need to remember the first trapezoid?
 
-  return lowerRegion;
+  return lowerRegionID;
 }
 
 RegionNode *Triangulator::SplitRegionByEdge(RegionNode *region,
@@ -107,19 +110,6 @@ RegionNode *Triangulator::SplitRegionByEdge(RegionNode *region,
   segment->low           = bottomVertex;
 }
 
-void Triangulator::SwapNode(Node *node1, Node *node2)
-{
-  static Node *staticNode = (Node *)malloc(NODE_SIZE);
-  memcpy(staticNode, node1, NODE_SIZE);
-  memcpy(node1, node2, NODE_SIZE);
-  memcpy(node1, staticNode, NODE_SIZE);
-}
-
-void Triangulator::OverwriteNode(Node *dest, Node *src)
-{
-  memcpy(dest, src, NODE_SIZE);
-}
-
 void Triangulator::BuildQueryTree()
 {
   // presets
@@ -129,7 +119,7 @@ void Triangulator::BuildQueryTree()
   _segments.resize(_segmentCount);
 
   // root
-  RegionNode *root = CreateNode<Node::REGION>();
+  _alloc.CreateNode<Node::REGION>();
 
   // leaves
   size_t baseInd = 0;
@@ -143,11 +133,12 @@ void Triangulator::BuildQueryTree()
 
       AddSegment(fromInd, toInd);
     }
-    UpdateVertexPosition();
-    baseInd = end;
 
+    baseInd = end;
     if (baseInd >= _permutation.size())
       break;
+
+    UpdateVertexPosition();
   }
 }
 
@@ -170,20 +161,21 @@ RegionNode *Triangulator::QueryFrom(Node *node, const Vec2 &point)
     {
       assert(type == Node::SEGMENT);
       SegmentNode *&&segment = static_cast<SegmentNode *>(node);
-      node = VertexLefter(point, segment->low->pos, segment->high->pos) ? segment->left : segment->right;
+      node = VertexLefter(point, segment->low->pos, segment->high->pos) ? segment->left
+                                                                        : segment->right;
     }
   }
   return reinterpret_cast<RegionNode *&>(node);
 }
 
-RegionNode *&Triangulator::ResolveVertexRegionCache(Index id)
+NodeIndex &Triangulator::GetVertexRegion(NodeIndex vertexID)
 {
-  Node *&cacheNode = _vertexTreePosition[id];
-  if (!cacheNode)
-    cacheNode = _root;
+  NodeIndex &regionID = _vertexTreePosition[vertexID];
+  if (!ValidID(regionID))
+    regionID = ROOT_NODE_ID;
 
-  cacheNode = QueryFrom(cacheNode, _points[id]);
-  return reinterpret_cast<RegionNode *&>(cacheNode);
+  regionID = QueryFrom(regionID, _alloc.GetNode<Node::VERTEX>(vertexID)->pos);
+  return regionID;
 }
 
 void Triangulator::UpdateVertexPosition()
@@ -220,4 +212,6 @@ bool Triangulator::VertexHigher(const Vec2 &left, const Vec2 &right)
   // todo: handle collision
 }
 
-const TriangleVector &Triangulator::Triangulate() {}
+const Triangles &Triangulator::Triangulate() {
+  BuildQueryTree();
+}
