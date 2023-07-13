@@ -67,24 +67,29 @@ SegmentNode *Triangulator::AddSegment(Index fromInd, Index toInd)
     lowVertexID  = AddVectex(fromVert, fromInd);
   }
 
-  VertexNode *highVertex = GET_VERTEX(highVertexID), *lowVertex = GET_VERTEX(lowVertexID);
-
-  if (highVertex->pos < lowVertex->pos)
-  {
-    std::swap(highVertex, lowVertex);
-    std::swap(highVertexID, lowVertexID);
-    downward = !downward;
-  }
-
-  // process
   int occasion;
-  NodeIndex curRegion = FindRegionBelow(highVertexID, lowVertex->pos, &occasion);
+  NodeIndex curRegion;
+  {
+    VertexNode *highVertex = GET_VERTEX(highVertexID), *lowVertex = GET_VERTEX(lowVertexID);
+
+    if (highVertex->pos < lowVertex->pos)
+    {
+      std::swap(highVertex, lowVertex);
+      std::swap(highVertexID, lowVertexID);
+      downward = !downward;
+    }
+
+    // process
+    curRegion = FindRegionBelow(highVertexID, lowVertex->pos, &occasion);
+  }  // braced because from now on, highVertex and lowVertex are possibly realloced!
+
   SplitRegionByEdge(curRegion, highVertexID, lowVertexID, downward, occasion);
   UpdateFirstSplitRegion(curRegion);
   UpdateRegionsAbovePoints(curRegion);
   curRegion = FindRegionBelow(curRegion);
   while (curRegion != bottomNode->right)
   {
+    curRegion = FindRegionBelow(curRegion, highVertexID, lowVertexID);
     SplitRegionByEdge(curRegion);
     UpdateMiddleSplitRegion(curRegion);
     UpdateRegionsAbovePoints();
@@ -93,7 +98,7 @@ SegmentNode *Triangulator::AddSegment(Index fromInd, Index toInd)
   UpdateLastSplitRegion(curRegion);
 }
 
-NodeIndex Triangulator::FindRegionBelow(NodeIndex vertexID, const Vec2 &ref, int *catagory)
+NodeIndex Triangulator::FindRegionBelow(NodeIndex vertexID, const Vec2 &ref, int *catagory) const
 {
   VertexNode *vertex = GET_VERTEX(vertexID);
 
@@ -156,6 +161,34 @@ NodeIndex Triangulator::FindRegionBelow(NodeIndex vertexID, const Vec2 &ref, int
       *catagory = LOW_LEFT_REGION;
     return belowInfo.right;
   }
+}
+
+NodeIndex Triangulator::FindRegionBelow(NodeIndex regionID,
+                                        NodeIndex highVertexID /* of the new segment */,
+                                        NodeIndex lowVertexID /* of the new segment */) const
+{
+  RegionNode *region = GET_REGION(regionID);
+
+  // occasion 1: only one region below
+  if (!ValidID(region->llID))
+  {
+    if (!ValidID(region->lrID))
+    {
+      // won't be here
+    }
+    return region->lrID;
+  }
+
+  // occasion 2: 2 regions below
+  VertexNode *splitVertex = GET_VERTEX(region->lowVertexID), *highVertex = GET_VERTEX(highVertexID),
+             *lowVertex = GET_VERTEX(lowVertexID);
+  bool collinear        = Collinear(splitVertex->pos, lowVertex->pos, highVertex->pos);
+  if (!collinear && VertexLefter(splitVertex->pos, lowVertex->pos, highVertex->pos))
+    return region->lrID;
+  else if (!collinear)
+    return region->llID;
+
+  // todo: collinear
 }
 
 NodeIndex Triangulator::SplitRegionByPoint(NodeIndex regionID, Index pointID)
@@ -307,30 +340,93 @@ bool Triangulator::GenerateRandomBool(void *seed)
   return 0x100 & reinterpret_cast<size_t>(seed);
 }
 
-bool Triangulator::VertexHigher(const Vec2 &left, const Vec2 &right)
+bool Triangulator::VertexHigher(const Vec2 &left, const Vec2 &right) const
 {
-  if (left.y - right.y > _tol)
-    return true;
-  if (left.y - right.y < -_tol)
-    return false;
-  if (left.x - right.y <= 0)
-    return true;
-  return false;
+  // if (left.y - right.y > _tol)  // todo: use tol?
+  //   return true;
+  // if (left.y - right.y < -_tol)
+  //   return false;
+  // if (left.x - right.y <= 0)
+  //   return true;
+  // return false;
 
   // todo: handle collision
+
+  if (left.y != right.y)
+    return left.y > right.y;
+  if (left.x != right.x)
+    return left.x > right.x;
+
+  // todo: coincident: use id to index
 }
 
-bool Triangulator::VertexLefter(const Vec2 &point, const Vec2 &low, const Vec2 &high)
+bool Triangulator::VertexLefter(const Vec2 &point, const Vec2 &low, const Vec2 &high) const
 {
   return ((point - low) ^ (high - low)) < 0;
+}
+
+bool Triangulator::SegmentIntersected(const Vec2 &from1,
+                                      const Vec2 &to1,
+                                      const Vec2 &from2,
+                                      const Vec2 &to2,
+                                      Vec2 *const intersection) const
+{
+  // return value: 0 - no, 1 - cross, 2 - coincident
+  double x1 = from1.x, x2 = to1.x, x3 = from2.x, x4 = to2.x;
+  double y1 = from1.y, y2 = to1.y, y3 = from2.y, y4 = to2.y;
+
+  double dx1 = x2 - x1, dx2 = x4 - x3, dy1 = y2 - y1, dy2 = y4 - y3, dx3 = x1 - x3, dy3 = y1 - y3;
+
+  double det = dx1 * dy2 - dx2 * dy1, det1 = dx1 * dy3 - dx3 * dy1, det2 = dx2 * dy3 - dx3 * dy2;
+
+  if (det == 0.)                   // todo: < _tol?
+  {                                // segments are parallel
+    if (det1 != 0. || det2 != 0.)  // lines are not co - linear
+      return 0;                    // not intersected
+
+    if (dx1 != 0. && (x1 < x3 && x3 < x2) || (x1 > x3 && x3 > x2))
+      return 2;  // infinitely many solutions
+    else if ((y1 < y3 && y3 < y2) || (y1 > y3 && y3 > y2))
+      return 2;
+
+    if ((x1 == x3 && y1 == y3) || (x1 == x4 && y1 == y4))
+    {
+      if (intersection)
+      {
+        intersection->x = x1;
+        intersection->y = y1;
+      }
+      return 1;
+    }
+    if ((x2 == x3 && y2 == y3) || (x2 == x4 && y2 == y4))
+    {
+      if (intersection)
+      {
+        intersection->x == x2;
+        intersection->y == y2;
+      }
+      return 1;
+    }
+  }
+
+  double s = det1 / det, t = det2 / det;
+  if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
+  {
+    if (intersection)
+    {
+      intersection->x = x1 + t * dx1;
+      intersection->y = y1 + t * dy1;
+    }
+  }
+  return 0;
 }
 
 void Triangulator::RefinePhase()
 {
   if (!_phase)
   {
-    unsigned short i = 0;
-    float val        = _vertices.size();
+    unsigned int i = 0;
+    double val     = _vertices.size();
     while (val >= 1.0f)
     {
       val = std::log(val);

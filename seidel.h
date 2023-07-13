@@ -34,8 +34,8 @@ protected:
   NodeIndex GetVertexRegion(NodeIndex id);
   void UpdateVertexPosition();
 
-  RegionNode *FindRegionBelow(RegionNode *region) const;
-  NodeIndex FindRegionBelow(NodeIndex vertexID, const Vec2 &ref, int *catagory);
+  NodeIndex FindRegionBelow(NodeIndex regionID, NodeIndex highVertexID, NodeIndex lowVertexID) const;
+  NodeIndex FindRegionBelow(NodeIndex vertexID, const Vec2 &ref, int *catagory) const;
   void UpdateFirstSplitRegion(RegionNode *region);
   void UpdateMiddleSplitRegion(RegionNode *region);
   void UpdateLastSplitRegion(RegionNode *region);
@@ -46,8 +46,9 @@ protected:
 
   void UpdatePermutation();
   static bool GenerateRandomBool(void *seed);
-  bool VertexHigher(const Vec2 &left, const Vec2 &right);
-  bool VertexLefter(const Vec2 &point, const Vec2 &lowEnd, const Vec2 &highEnd);
+  bool VertexHigher(const Vec2 &left, const Vec2 &right) const;
+  bool VertexLefter(const Vec2 &point, const Vec2 &lowEnd, const Vec2 &highEnd) const;
+  bool SegmentIntersected(const Vec2 &from1, const Vec2 &to1, const Vec2 &from2, const Vec2 &to2, Vec2 *const intersection) const;
 
   // configuration
   bool _compactPoints     = false; /* false: vertex[0] same as vertex[-1] */

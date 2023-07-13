@@ -59,7 +59,7 @@ public:
   }
 
   template <Node::Type T = Node::NONE>
-  inline NodeTrait<T>::type *GetNode(NodeIndex index)
+  inline NodeTrait<T>::type *GetNode(NodeIndex index) const
   {
     return reinterpret_cast<NodeTrait<T>::type *>(_data + index * NODE_SIZE);
   }
