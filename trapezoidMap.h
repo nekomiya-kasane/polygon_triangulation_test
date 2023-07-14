@@ -22,6 +22,7 @@ struct Node
     NONE,
     VERTEX,
     SEGMENT,
+    REGION
   };
 
   NodeID id;
@@ -125,17 +126,22 @@ protected:
 
   NodePair SplitRegionByVertex(RegionID regionID, VertexID vertexID);
   NodePair SplitRegionBySegment(RegionID regionID,
-                                VertexID vertexID,
                                 SegmentID segmentID,
+                                VertexID segmentHighVertexID,
+                                VertexID segmentLowVertexID,
                                 int type /* 0 - high, 1 - mid, 2 - low */);
   NodeID SplitSegmentByVertex(RegionID oneSideRegionID,
                               VertexID highVertexID,
+                              
                               const Vertex &intersectionVertex, bool leftIntersected); /* returns the other side ID */
 
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
-  bool Higher(const Vertex &refVertex, const Vertex &highVertex,
-              const Vertex &lowVertex, const Vertex * const subRefVertex = nullptr) const;
+  int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
   bool Higher /* Lefter */ (VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID, VertexID subRefVertexID = INVALID_INDEX) const;
+  int Higher /* Lefter */ (const Vertex &refVertex,
+                            const Vertex &highVertex,
+              const Vertex &lowVertex,
+              const Vertex *const subRefVertexPtr = nullptr) const;
   bool Intersected(SegmentID segment,
                    VertexID highVertex,
                    VertexID lowVertex,

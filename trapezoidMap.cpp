@@ -50,6 +50,7 @@ bool TrapezoidMap::AddSegment(VertexID fromID, VertexID toID)
   RegionID originalRegionID = GetRegionNext(segment.highVertex, segment.lowVertex), nextRegionID;
   Region &originalRegion    = _regions[originalRegionID];
 
+  ResolveIntersection(originalRegionID, segment);
   auto [leftRegionID, rightRegionID] = SplitRegionBySegment(originalRegionID, segmentID, 0);
 
   while (
@@ -73,34 +74,72 @@ NodePair TrapezoidMap::SplitRegionByVertex(RegionID regionID, VertexID vertexID)
   lowRegion.left             = highRegion.left;
   lowRegion.right            = highRegion.right;
   lowRegion.highNeighbors[0] = GET_REAL_ID(highRegion.nodeID);
+  lowRegion.highNeighbors[1] = GET_REAL_ID(highRegion.nodeID);
   lowRegion.lowNeighbors[0]  = highRegion.lowNeighbors[0];
   lowRegion.lowNeighbors[1]  = highRegion.lowNeighbors[1];
 
-  highRegion.lowNeighbors[1] = GET_REAL_ID(lowRegion.nodeID);
   highRegion.lowNeighbors[0] = INVALID_INDEX;
+  highRegion.lowNeighbors[1] = GET_REAL_ID(lowRegion.nodeID);
+
+  // new NodeID for the original Region since it's now a leaf of the original node
+  Node &newNodeForHighRegion = NewNode(Node::REGION);
+  highRegion.nodeID          = newNodeForHighRegion.id;
 
   return {highRegion.nodeID, lowRegion.nodeID};
 }
 
 NodePair TrapezoidMap::SplitRegionBySegment(RegionID regionID,
-                                            VertexID vertexID,
                                             SegmentID segmentID,
+                                            VertexID segmentHighVertexID,
+                                            VertexID segmentLowVertexID,
                                             int type)
 {
+  // The segment won't intersect with the left/right segments of the region, we have ensure this
+  // outside this function
   Region &highRegion = _regions[regionID];  // left
   Region &lowRegion  = NewRegion();         // right
 
+  RegionID lowLeftRegionID  = highRegion.lowNeighbors[0],
+           lowRightRegionID = highRegion.lowNeighbors[1];
+  assert(Valid(lowLeftRegionID) && Valid(lowRightRegionID));
+  bool oneRegionBelow = lowLeftRegionID == lowRightRegionID;
+
   // sync info
-  //bool toLowVertex = _segments[segmentID];
+  // bool toLowVertex = _segments[segmentID];
   switch (type)
   {
     case 0:
     {
       bool fromRightTop = _segments[segmentID].highVertex == _segments[highRegion.right].highVertex;
+      bool toLow        = _segments[segmentID].lowVertex == highRegion.low;
+
       if (fromRightTop)
-      {}
+      {
+        highRegion.right = segmentID;
+        lowRegion.left   = segmentID;
+
+        if (toLow)
+        {
+            if (oneRegionBelow)
+            {
+              // degenerated 1
+              if ()
+
+          }
+          Region &lowLeftRegion  = _regions[highRegion.lowNeighbors[0]];
+          Region &lowRightRegion = _regions[highRegion.lowNeighbors[1]];
+
+          low
+        }
+
+        // resolve highRegion
+      }
     }
   }
+
+  Node &originalNode         = _nodes[highRegion.nodeID];
+  Node &newNodeForHighRegion = NewNode(Node::Type::REGION);
+  highRegion.nodeID          = newNodeForHighRegion.id;
 }
 
 RegionID TrapezoidMap::GetRegionNext(VertexID highVertex, VertexID refVertex)
@@ -137,6 +176,8 @@ RegionID TrapezoidMap::GetRegionNext(VertexID highVertex, VertexID refVertex)
   }
   assert(found);
   return GET_REAL_ID(found->regionID);
+
+  // todo: handle intersection
 }
 
 RegionID TrapezoidMap::GetRegionNext(RegionID curRegionID,
@@ -171,6 +212,7 @@ RegionID TrapezoidMap::GetRegionNext(RegionID curRegionID,
   }
 
   //    - 2 below
+  // todo: subRef
   if (Higher(lowMidVertexID, highVertexID, lowVertexID))
     return region.lowNeighbors[1];
   return region.lowNeighbors[0];
@@ -195,6 +237,17 @@ bool TrapezoidMap::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
   const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
 
+  int res = Higher(leftVertex, rightVertex);
+  if (res > -1)
+    return !!res;
+
+  // same x, y: latter vertex always on the right, is this OK?
+  assert(leftVertexID != rightVertexID);
+  return leftVertexID < rightVertexID;
+}
+
+int TrapezoidMap::Higher(const Vertex &leftVertex, const Vertex &rightVertex) const
+{
   if (leftVertex.y > rightVertex.y)
     return true;
   if (leftVertex.y < rightVertex.y)
@@ -206,9 +259,7 @@ bool TrapezoidMap::Higher(VertexID leftVertexID, VertexID rightVertexID) const
   if (leftVertex.x > rightVertex.x)
     return true;
 
-  // same x, y: latter vertex always on the right, is this OK?
-  assert(leftVertexID != rightVertexID);
-  return leftVertexID < rightVertexID;
+  return -1;  // uncertain
 }
 
 bool TrapezoidMap::Higher(VertexID refVertexID,
@@ -218,28 +269,37 @@ bool TrapezoidMap::Higher(VertexID refVertexID,
 {
   const Vertex &refVertex = _vertices[refVertexID], &highVertex = _vertices[highVertexID],
                &lowVertex = _vertices[lowVertexID];
-  return Higher(refVertex, highVertex, lowVertex,
-                Valid(subRefVertexID) ? &_vertices[subRefVertexID] : nullptr);
+  int res                 = Higher(refVertex, highVertex, lowVertex,
+                   Valid(subRefVertexID) ? &_vertices[subRefVertexID] : nullptr);
+  if (res > -1)
+    return !!res;
+
+  return refVertexID < std::min(highVertexID, lowVertexID);
 }
 
-bool TrapezoidMap::Higher(const Vertex &refVertex,
-                          const Vertex &highVertex,
-                          const Vertex &lowVertex,
-                          const Vertex *const subRefVertexPtr) const
+int TrapezoidMap::Higher(const Vertex &refVertex,
+                         const Vertex &highVertex,
+                         const Vertex &lowVertex,
+                         const Vertex *const subRefVertexPtr) const
 {
-  // todo: high = low?
-  double cross = (highVertex - lowVertex) ^ (refVertex - lowVertex);
+  auto highLow = highVertex - lowVertex;
+  double cross = highLow ^ (refVertex - lowVertex);
   if (cross != 0.)
     return cross > 0;
+  if (highLow.NormSq() == 0.)
+    return Higher(refVertex, highVertex);
 
   if (!subRefVertexPtr)
     return false;
 
   const Vertex &subRefVertex = *subRefVertexPtr;
-  cross                      = (refVertex - subRefVertex) ^ (highVertex - lowVertex);
+  auto refHighLow            = refVertex - subRefVertex;
+  cross                      = refHighLow ^ highLow;
   if (cross != 0.)
     return cross > 0;
+  if (refHighLow.NormSq() == 0.)
+    return lowVertex.x > highVertex.x;
 
-  // todo: still 0?
+  // todo: still 0? Is this possible?
   return false;
 }
