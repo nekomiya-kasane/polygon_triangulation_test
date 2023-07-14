@@ -6,14 +6,17 @@
 
 #include "vec2.h"
 
-using Index                   = unsigned int;
-using Indexes                 = std::vector<Index>;
-using NodeIndex               = unsigned int;
-using NodeIndexes             = std::vector<NodeIndex>;
-constexpr Index INVALID_INDEX = 0; /* valid from 1 */
-constexpr Index ROOT_NODE_ID  = 1;
-using Depth                   = unsigned short;
-constexpr Depth INVALID_DEPTH = 0;
+using Index                          = unsigned int;
+using Indexes                        = std::vector<Index>;
+using NodeIndex                      = unsigned int;
+using NodeIndexes                    = std::vector<NodeIndex>;
+constexpr NodeIndex INVALID_INDEX    = 0; /* valid from 1 */
+constexpr NodeIndex DEGENRATED_INDEX = -1;
+constexpr NodeIndex ROOT_NODE_ID     = 1;
+using Depth                          = unsigned short;
+constexpr Depth INVALID_DEPTH        = 0;
+constexpr double INVALID_ANGLE_P     = 4;
+constexpr double INVALID_ANGLE_N     = -4;
 
 inline bool ValidID(Index id)
 {
@@ -89,4 +92,3 @@ struct NodeTrait<Node::Type::VERTEX>
 {
   using type = VertexNode;
 };
-

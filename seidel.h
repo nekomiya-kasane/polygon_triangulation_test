@@ -27,7 +27,7 @@ protected:
   SegmentNode *AddSegment(Index fromID, Index toID);
 
   [[nodiscard]] NodeIndex SplitRegionByPoint(NodeIndex regionID, Index pointID);
-  [[nodiscard]] RegionNode *SplitRegionByEdge(NodeIndex regionID,
+  [[nodiscard]] std::pair<NodeIndex, NodeIndex> SplitRegionByEdge(NodeIndex regionID,
                                               NodeIndex highVertexID,
                                               NodeIndex lowVertexID, bool downward, int catagory);
 
@@ -39,7 +39,7 @@ protected:
   void UpdateFirstSplitRegion(RegionNode *region);
   void UpdateMiddleSplitRegion(RegionNode *region);
   void UpdateLastSplitRegion(RegionNode *region);
-  void UpdateRegionsAbovePoints(RegionNode *region);
+  void UpdateRegionsBelowPoints(RegionNode *region);
 
   Triangles TriangulateMonoMountain(const Indexes &vertices);
   void AssignDepth();
