@@ -157,42 +157,50 @@ RegionID TrapezoidMapP::GetRegionNext(VertexID highVertex, VertexID refVertex /*
   return region;
 }
 
-void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
-                                        VertexID highVertexID,
-                                        VertexID lowVertexID,
-                                        bool checkLeft,
-                                        bool checkRight)
+SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
+                                             SegmentID segmentID,
+                                             bool checkLeft,
+                                             bool checkRight)
 {
-  // 1. add 2 vertices
-  // 2. add 2 new regions
-  // 3. resolve maps
-  // 4. resolve new subsegment of the already added segment
-  // 5. add new subsegment of the new segment
-
-  // type 1:  old /\ new
-  Region &region = _regions[curRegionID];
+  Region &region        = _regions[curRegionID];
+  Segment &newSegment   = _segments[segmentID];
+  VertexID highVertexID = newSegment.highVertex, lowVertexID = newSegment.lowVertex;
 
   Vertex intersection;
   if (checkLeft)
   {
-    bool leftDownward       = _segmentDownward[region.left],
-         newSegmentDownward = _endVertices[highVertexID] == lowVertexID;
+    Segment &leftSegment = _segments[region.left];
+    bool leftDownward = leftSegment.downward, newSegmentDownward = newSegment.downward;
 
-    VertexID leftHighVertexID = leftDownward ? region.left : _endVertices[region.left],
-             leftLowVertexID  = !leftDownward ? region.left : _endVertices[region.left];
+    VertexID &leftHighVertexID = leftSegment.highVertex, &leftLowVertexID = leftSegment.lowVertex;
     if (Intersected(leftHighVertexID, leftLowVertexID, highVertexID, lowVertexID, &intersection))
     {
       // split vertices
-      VertexID leftNewVertexID  = AppendVertex(intersection),
-               rightNewVertexID = AppendVertex(intersection);
+      VertexID leftNewVertexID      = AppendVertex(intersection),
+               rightNewVertexID     = AppendVertex(intersection);
+      SegmentID newLeftSubsegmentID = AppendSegment(leftDownward),
+                newNewSubsegmentID  = AppendSegment(newSegmentDownward);
+      Segment &newLeftSubsegment    = _segments[newLeftSubsegmentID],
+              &newNewSubsegment     = _segments[newNewSubsegmentID];
+      newNewSubsegment.lowVertex    = lowVertexID;
+      newLeftSubsegment.highVertex  = rightNewVertexID;
+      newNewSubsegment.highVertex =
+          (leftDownward == newSegmentDownward) ? leftNewVertexID : rightNewVertexID;
+      newLeftSubsegment.lowVertex = leftLowVertexID;
 
       // find left intersected region
       RegionID leftRegionID = _lowNeighbors[leftHighVertexID].left;
       Region *leftRegion    = &_regions[leftRegionID];
-      while (Higher(_vertices[leftRegion->low], intersection))
+      while (true)
       {
-        leftRegionID = leftRegion->lowNeighbors[1];  // right most
-        leftRegion   = &_regions[leftRegionID];
+        RegionID leftBelowRegionID = leftRegion->lowNeighbors[1];  // right most
+        Region &leftBelowRegion    = _regions[leftBelowRegionID];
+
+        if (Higher(_vertices[leftBelowRegion.low], intersection))
+        {
+          leftRegionID = leftBelowRegionID;
+          leftRegion   = &leftBelowRegion;
+        }
       }
 
       SplitRegionByVertex(leftRegionID, leftNewVertexID);
@@ -206,7 +214,7 @@ void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         leftRegion   = &_regions[leftRegionID];
 
         // modify right segment
-        leftRegion->right = leftNewVertexID;
+        leftRegion->right = newLeftSubsegmentID;
       }
 
       // resolve right regions
@@ -218,12 +226,10 @@ void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         leftRegion   = &_regions[leftRegionID];
 
         // modify right segment
-        leftRegion->left = rightNewVertexID;
+        leftRegion->left = newLeftSubsegmentID;
       }
 
       // resolve segments
-      _segmentDownward[leftNewVertexID]  = newSegmentDownward;
-      _segmentDownward[rightNewVertexID] = leftDownward;
       if (leftDownward && newSegmentDownward)
       {
         _endVertices[leftHighVertexID]  = leftNewVertexID;
@@ -268,104 +274,121 @@ void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         _prevVertices[highVertexID]     = rightNewVertexID;
         _prevVertices[rightNewVertexID] = lowVertexID;
       }
+
+      return newNewSubsegmentID;
     }
   }
 
   if (checkRight)
   {
-    bool rightDownward      = _segmentDownward[region.right],
-         newSegmentDownward = _endVertices[highVertexID] == lowVertexID;
+    Segment &rightSegment = _segments[region.right];
+    bool rightDownward = rightSegment.downward, newSegmentDownward = newSegment.downward;
 
-    VertexID rightHighVertexID = rightDownward ? region.right : _endVertices[region.right],
-             rightLowVertexID  = !rightDownward ? region.right : _endVertices[region.right];
+    VertexID &rightHighVertexID = rightSegment.highVertex,
+             &rightLowVertexID  = rightSegment.lowVertex;
     if (Intersected(rightHighVertexID, rightLowVertexID, highVertexID, lowVertexID, &intersection))
     {
       // split vertices
-      VertexID leftNewVertexID  = AppendVertex(intersection),
-               rightNewVertexID = AppendVertex(intersection);
+      VertexID leftNewVertexID       = AppendVertex(intersection),
+               rightNewVertexID      = AppendVertex(intersection);
+      SegmentID newRightSubsegmentID = AppendSegment(rightDownward),
+                newNewSubsegmentID   = AppendSegment(newSegmentDownward);
+      Segment &newRightSubsegment    = _segments[newRightSubsegmentID],
+              &newNewSubsegment      = _segments[newNewSubsegmentID];
+      newRightSubsegment.highVertex =
+          (rightDownward == newSegmentDownward) ? rightNewVertexID : leftNewVertexID;
+      newNewSubsegment.highVertex  = rightNewVertexID;
+      newNewSubsegment.lowVertex   = lowVertexID;
+      newRightSubsegment.lowVertex = rightLowVertexID;
 
-      // find left intersected region
-      RegionID rightRegionID = _lowNeighbors[rightHighVertexID].right;
+      // find right intersected region
+      RegionID rightRegionID = _lowNeighbors[rightHighVertexID].left;
       Region *rightRegion    = &_regions[rightRegionID];
-      while (Higher(_vertices[rightRegion->low], intersection))
+      while (true)
       {
-        rightRegionID = rightRegion->lowNeighbors[0];  // left-most
-        rightRegion   = &_regions[rightRegionID];
+        RegionID rightBelowRegionID = rightRegion->lowNeighbors[0];  // left most
+        Region &rightBelowRegion    = _regions[rightBelowRegionID];
+
+        if (Higher(_vertices[rightBelowRegion.low], intersection))
+        {
+          rightRegionID = rightBelowRegionID;
+          rightRegion   = &rightBelowRegion;
+        }
       }
 
-      SplitRegionByVertex(leftRegionID, leftNewVertexID);
+      SplitRegionByVertex(rightRegionID, leftNewVertexID);
       SplitRegionByVertex(curRegionID, rightNewVertexID);
 
-      // resolve left regions
-      VertexID footVertexID = leftRegion->low;
-      while (footVertexID != leftLowVertexID)
+      // resolve right regions
+      VertexID footVertexID = rightRegion->low;
+      while (footVertexID != rightLowVertexID)
       {
-        leftRegionID = leftRegion->lowNeighbors[1];
-        leftRegion   = &_regions[leftRegionID];
+        rightRegionID = rightRegion->lowNeighbors[0];
+        rightRegion   = &_regions[rightRegionID];
 
         // modify right segment
-        leftRegion->right = leftNewVertexID;
+        rightRegion->left = newRightSubsegmentID;
       }
 
-      // resolve right regions
+      // resolve left regions
       Region *rightRegion = &region;
       footVertexID        = rightRegion->low;
-      while (footVertexID != leftLowVertexID)
+      while (footVertexID != rightLowVertexID)
       {
-        leftRegionID = leftRegion->lowNeighbors[0];
-        leftRegion   = &_regions[leftRegionID];
+        rightRegionID = rightRegion->lowNeighbors[1];
+        rightRegion   = &_regions[rightRegionID];
 
         // modify right segment
-        leftRegion->left = rightNewVertexID;
+        rightRegion->right = newRightSubsegmentID;
       }
 
       // resolve segments
-      _segmentDownward[leftNewVertexID]  = newSegmentDownward;
-      _segmentDownward[rightNewVertexID] = leftDownward;
-      if (leftDownward && newSegmentDownward)
+      if (rightDownward && newSegmentDownward)
       {
-        _endVertices[leftHighVertexID]  = leftNewVertexID;
-        _endVertices[leftNewVertexID]   = leftLowVertexID;
-        _endVertices[highVertexID]      = rightNewVertexID;
-        _endVertices[rightNewVertexID]  = lowVertexID;
-        _prevVertices[leftNewVertexID]  = leftHighVertexID;
-        _prevVertices[rightNewVertexID] = highVertexID;
-        _prevVertices[lowVertexID]      = rightNewVertexID;
-        _prevVertices[leftLowVertexID]  = leftNewVertexID;
-      }
-      else if (!leftDownward && newSegmentDownward)
-      {
-        _endVertices[leftLowVertexID]   = leftNewVertexID;
-        _endVertices[leftNewVertexID]   = leftHighVertexID;
+        _endVertices[rightHighVertexID] = rightNewVertexID;
+        _endVertices[leftNewVertexID]   = rightLowVertexID;
         _endVertices[highVertexID]      = leftNewVertexID;
         _endVertices[rightNewVertexID]  = lowVertexID;
-        _prevVertices[lowVertexID]      = rightNewVertexID;
-        _prevVertices[rightNewVertexID] = leftLowVertexID;
-        _prevVertices[leftHighVertexID] = leftNewVertexID;
         _prevVertices[leftNewVertexID]  = highVertexID;
+        _prevVertices[rightNewVertexID] = rightHighVertexID;
+        _prevVertices[lowVertexID]      = rightNewVertexID;
+        _prevVertices[rightLowVertexID] = leftNewVertexID;
       }
-      else if (leftDownward && !newSegmentDownward)
+      else if (!rightDownward && newSegmentDownward)
       {
-        _endVertices[leftHighVertexID]  = leftNewVertexID;
+        _endVertices[rightLowVertexID]   = rightNewVertexID;
+        _endVertices[leftNewVertexID]    = rightHighVertexID;
+        _endVertices[highVertexID]       = leftNewVertexID;
+        _endVertices[rightNewVertexID]   = lowVertexID;
+        _prevVertices[lowVertexID]       = rightNewVertexID;
+        _prevVertices[rightNewVertexID]  = rightLowVertexID;
+        _prevVertices[rightHighVertexID] = leftNewVertexID;
+        _prevVertices[leftNewVertexID]   = highVertexID;
+      }
+      else if (rightDownward && !newSegmentDownward)
+      {
+        _endVertices[rightHighVertexID] = leftNewVertexID;
         _endVertices[lowVertexID]       = rightNewVertexID;
-        _endVertices[rightNewVertexID]  = leftLowVertexID;
+        _endVertices[rightNewVertexID]  = rightLowVertexID;
         _endVertices[leftNewVertexID]   = highVertexID;
-        _prevVertices[leftNewVertexID]  = leftHighVertexID;
+        _prevVertices[leftNewVertexID]  = rightHighVertexID;
         _prevVertices[rightNewVertexID] = lowVertexID;
-        _prevVertices[leftLowVertexID]  = rightNewVertexID;
+        _prevVertices[rightLowVertexID] = rightNewVertexID;
         _prevVertices[highVertexID]     = leftNewVertexID;
       }
       else
       {
-        _endVertices[leftNewVertexID]   = leftHighVertexID;
-        _endVertices[rightNewVertexID]  = highVertexID;
-        _endVertices[lowVertexID]       = rightNewVertexID;
-        _endVertices[leftLowVertexID]   = leftNewVertexID;
-        _prevVertices[leftHighVertexID] = leftNewVertexID;
-        _prevVertices[leftNewVertexID]  = leftLowVertexID;
-        _prevVertices[highVertexID]     = rightNewVertexID;
-        _prevVertices[rightNewVertexID] = lowVertexID;
+        _endVertices[leftNewVertexID]    = highVertexID;
+        _endVertices[rightNewVertexID]   = rightHighVertexID;
+        _endVertices[lowVertexID]        = rightNewVertexID;
+        _endVertices[rightNewVertexID]   = leftNewVertexID;
+        _prevVertices[rightHighVertexID] = rightNewVertexID;
+        _prevVertices[leftNewVertexID]   = rightLowVertexID;
+        _prevVertices[highVertexID]      = leftNewVertexID;
+        _prevVertices[rightNewVertexID]  = lowVertexID;
       }
+
+      return newNewSubsegmentID;
     }
   }
 }

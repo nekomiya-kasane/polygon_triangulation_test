@@ -49,8 +49,10 @@ struct Segment
   VertexID highVertex, lowVertex;
   bool downward;
 
-  VertexID from() const { return downward ? highVertex : lowVertex; }
-  VertexID to() const { return downward ? lowVertex : highVertex; }
+  const VertexID &from() const { return downward ? highVertex : lowVertex; }
+  const VertexID &from() const { return downward ? highVertex : lowVertex; }
+  VertexID &to() { return downward ? lowVertex : highVertex; }
+  VertexID &to() { return downward ? lowVertex : highVertex; }
 };
 
 using Vertex   = Vec2;

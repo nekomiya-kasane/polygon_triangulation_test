@@ -21,18 +21,19 @@ public:
   RegionID Query(const Vertex &point);
   RegionID QueryFrom(RegionID region, const Vertex &point);
 
+protected:
   VertexID AppendVertex(const Vertex &vertex);
+  SegmentID AppendSegment(bool downward);
 
 protected:
   Allocator<Node> _nodes;
   Allocator<Region> _regions;
+  Allocator<Segment> _segments;
   Allocator<Vertex> _vertices;
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
   std::vector<VertexID> _endVertices, _prevVertices;
-  std::vector<SegmentID> _segments;
   std::vector<NodeID> _vertexAdded;
-  std::vector<bool> _segmentDownward;  // highVertex started segment go upward?
 
   struct VertexNeighborInfo
   {
@@ -74,11 +75,10 @@ protected:
   void ResolvePossibleIntersectionL();
   void ResolvePossibleIntersectionR();
   void ResolvePossibleIntersectionM();
-  void ResolveIntersection(RegionID curRegionID,
-                           VertexID highVertexID,
-                           VertexID lowVertexID,
-                           bool checkLeft,
-                           bool checkRight);
+  SegmentID ResolveIntersection(RegionID curRegionID,
+                                SegmentID newSegmentID,
+                                bool checkLeft,
+                                bool checkRight);
   // \_     /
   // |\    /
   //   \  /
