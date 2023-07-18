@@ -104,6 +104,17 @@ NodePair TrapezoidMap::SplitRegionBySegment(RegionID regionID,
   assert(Valid(lowLeftRegionID) && Valid(lowRightRegionID));
   bool oneRegionBelow = lowLeftRegionID == lowRightRegionID;
 
+  // assign original NodeID to the overridden node
+  Node &originalNode = _nodes[highRegion.nodeID];
+  originalNode.type  = Node::SEGMENT;
+  originalNode.value = segmentID;
+
+  Node &newNodeForHighRegion = NewNode(Node::Type::REGION);
+  highRegion.nodeID          = newNodeForHighRegion.id;  // renumber high region
+
+  originalNode.left  = highRegion.nodeID;
+  originalNode.right = lowRegion.nodeID;
+
   // sync info
   // bool toLowVertex = _segments[segmentID];
   switch (type)
@@ -115,31 +126,44 @@ NodePair TrapezoidMap::SplitRegionBySegment(RegionID regionID,
 
       if (fromRightTop)
       {
+        // segments
         highRegion.right = segmentID;
         lowRegion.left   = segmentID;
 
         if (toLow)
         {
-            if (oneRegionBelow)
-            {
-              // degenerated 1
-              if ()
-
-          }
           Region &lowLeftRegion  = _regions[highRegion.lowNeighbors[0]];
           Region &lowRightRegion = _regions[highRegion.lowNeighbors[1]];
 
-          low
+          if (oneRegionBelow)
+          {
+            // degenerated 1: same edge added again - forbidden
+            // ...
+            // degenerated 2: diagonal
+            if (_segments[highRegion.left].lowVertex == segmentLowVertexID)
+            {
+              lowRegion.lowNeighbors[0] = lowRegion.lowNeighbors[1] =
+                  lowLeftRegionID;  // == lowRightRegionID
+              highRegion.lowNeighbors[0] = highRegion.lowNeighbors[1] = INVALID_INDEX;
+
+              lowLeftRegion.highNeighbors[0] = lowLeftRegion.highNeighbors[1] =
+                  GET_REAL_ID(lowRegion.nodeID);
+
+              // todo: update
+            }
+            // mid
+            else
+            {
+              lowRegion.lowNeighbors[0] = lowRegion.lowNeighbors[1] = lowRightRegionID;
+              lowRegion.lowNeighbors[0] = lowRegion.lowNeighbors[1] = lowLeftRegionID;
+            }
+          }
         }
 
         // resolve highRegion
       }
     }
   }
-
-  Node &originalNode         = _nodes[highRegion.nodeID];
-  Node &newNodeForHighRegion = NewNode(Node::Type::REGION);
-  highRegion.nodeID          = newNodeForHighRegion.id;
 }
 
 RegionID TrapezoidMap::GetRegionNext(VertexID highVertex, VertexID refVertex)
