@@ -35,22 +35,28 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
 
   bool highAdded = AddVertex(segment.highVertex), lowAdded = AddVertex(segment.lowVertex);
 
-  int type;
-  RegionID originalRegionID = GetRegionNext(segment.highVertex, segment.lowVertex, &type);
-  Region &originalRegion    = _regions[originalRegionID];
+  SegmentID splittedSegment = segmentID;
 
-  ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
-
-  auto [leftRegionID, rightRegionID] = SplitRegionBySegment(originalRegionID, segmentID, 0);
-
-  while (
-      Valid(nextRegionID = GetRegionNext(originalRegionID, segment.highVertex, segment.lowVertex)))
+  while (Valid(segmentID))
   {
-    std::tie(leftRegionID, rightRegionID) = SplitRegionBySegment(originalRegionID, segmentID, 1);
+    int type;
+    RegionID originalRegionID =
+        GetFirstIntersectedRegion(segment.highVertex, segment.lowVertex, &type);
+    Region &originalRegion = _regions[originalRegionID];
 
-    originalRegionID = nextRegionID;
+    splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+
+    SplitRegionBySegment(originalRegionID, segmentID, type);
+
+    while (Valid(_nextRegion))
+    {
+      assert(!Valid(splittedSegment));
+      splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+      SplitRegionBySegment(originalRegionID, segmentID, type);
+    }
+
+    segmentID = splittedSegment;
   }
-  std::tie(leftRegionID, rightRegionID) = SplitRegionBySegment(originalRegionID, segmentID, 2);
 }
 
 RegionID TrapezoidMapP::Query(const Vertex &point)
@@ -86,19 +92,20 @@ NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID
   return {highRegion.nodeID, lowRegion.nodeID};
 }
 
-NodePair TrapezoidMapP::SplitFirstRegionBySegment(RegionID regionID, SegmentID segmentID, int &type)
+void TrapezoidMapP::SplitRegionBySegment(RegionID regionID, SegmentID segmentID, int &type)
 {
   // The segment won't intersect with the left/right segments of the region, we have ensured this
   // outside this function.
   // two vertices are already inserted, hence we need not to consider other occasions - the vertices
   // must be the high & low vertex of the trapezoid.
 
-  Region &highRegion   = _regions[regionID];  // left
-  Region &lowRegion    = NewRegion();         // right
+  Region &highRegion = _regions[_mergeType == -1 ? _tmpRegionToMerge : regionID];
+  Region &lowRegion  = _mergeType == 1 ? _regions[_tmpRegionToMerge] : NewRegion();
+
   RegionID lowRegionID = GET_REAL_ID(lowRegion.nodeID);
 
   // update neighbors
-  UpdateAbove(regionID, regionID, lowRegionID, segmentID, type);
+  UpdateAbove(highRegion, highRegion, lowRegion, segmentID, type);
   type = UpdateBelow(regionID, regionID, lowRegionID, segmentID);
 
   // assign original NodeID to the overridden node
@@ -211,9 +218,9 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
   }
 }
 
-RegionID TrapezoidMapP::GetRegionNext(VertexID highVertex,
-                                      VertexID refVertex /* lower */,
-                                      int *type)
+RegionID TrapezoidMapP::GetFirstIntersectedRegion(VertexID highVertex,
+                                                  VertexID refVertex /* lower */,
+                                                  int *type)
 {
   RegionID region;  // won't change after
   {
@@ -257,10 +264,10 @@ RegionID TrapezoidMapP::GetRegionNext(VertexID highVertex,
   return region;
 }
 
-void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
-                                        SegmentID segmentID,
-                                        bool checkLeft,
-                                        bool checkRight)
+SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
+                                             SegmentID segmentID,
+                                             bool checkLeft,
+                                             bool checkRight)
 {
   Region &region        = _regions[curRegionID];
   Segment &newSegment   = _segments[segmentID];
@@ -306,7 +313,7 @@ void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         }
       }
 
-      SplitRegionByVertex(leftRegionID, leftNewVertexID);
+      SplitRegionByVertex(leftRegionID, leftNewVertexID);  // will be added to the tree
       SplitRegionByVertex(curRegionID, rightNewVertexID);
 
       // resolve left regions
@@ -385,6 +392,7 @@ void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
 
         newSegment.lowVertex = rightNewVertexID;
       }
+      return newNewSubsegmentID;
     }
   }
 
@@ -498,53 +506,11 @@ void TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       }
 
       newSegment.lowVertex = leftNewVertexID;
+      return newNewSubsegmentID;
     }
+    return INVALID_INDEX;
   }
 }
-
-RegionID TrapezoidMapP::GetRegionNext(RegionID curRegionID,
-                                      VertexID highVertexID,
-                                      VertexID lowVertexID)
-{
-  Region &region          = _regions[curRegionID];
-  VertexID lowMidVertexID = region.low;
-  assert(Valid(lowMidVertexID));
-  if (lowMidVertexID == lowVertexID)
-    return INVALID_INDEX;  // last
-
-  // occasion 1: go left or right
-  Vertex intersection;
-  if (Intersected(GET_REAL_ID(region.left), highVertexID, lowVertexID, &intersection) &&
-      InInterval(intersection.y, _vertices[region.low].y, _vertices[region.high].y))
-  {
-    return SplitSegmentByVertex(curRegionID, highVertexID, intersection, true);
-  }
-  if (Intersected(GET_REAL_ID(region.right), highVertexID, lowVertexID, &intersection) &&
-      InInterval(intersection.y, _vertices[region.low].y, _vertices[region.high].y))
-  {
-    return SplitSegmentByVertex(curRegionID, highVertexID, intersection, false);
-  }
-
-  // occasion 2: go below
-  //    - only 1 below
-  if (!Valid(region.lowNeighbors[0]))
-  {
-    assert(Valid(region.lowNeighbors[1]));
-    return region.lowNeighbors[1];
-  }
-
-  //    - 2 below
-  // todo: subRef
-  if (Higher(lowMidVertexID, highVertexID, lowVertexID))
-    return region.lowNeighbors[1];
-  return region.lowNeighbors[0];
-}
-
-NodeID TrapezoidMapP::SplitSegmentByVertex(RegionID lastRegionID,
-                                           VertexID highVertexID,
-                                           const Vertex &intersectionVertex,
-                                           bool leftIntersected)
-{}
 
 bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {

@@ -41,8 +41,7 @@ protected:
 
     inline int Size() const { return Valid(left) + Valid(mid) + Valid(right); }
   };
-  std::vector<VertexNeighborInfo> _highNeighbors,
-      _lowNeighbors;  // for vertices
+  std::vector<VertexNeighborInfo> _lowNeighbors;  // for vertices
 
 protected:
   inline static bool Valid(NodeID index) { return index != INVALID_INDEX; }
@@ -69,43 +68,23 @@ protected:
     return node.id;
   }
 
-  RegionID GetRegionNext(VertexID highVertex, VertexID refVertex, int *type);
-  RegionID GetRegionNext(RegionID thisRegionID, VertexID highVertex, VertexID lowVertex);
+  RegionID GetFirstIntersectedRegion(VertexID highVertex, VertexID refVertex, int *type);
 
-  void ResolvePossibleIntersectionL();
-  void ResolvePossibleIntersectionR();
-  void ResolvePossibleIntersectionM();
-  void ResolveIntersection(RegionID curRegionID,
-                           SegmentID newSegmentID,
-                           bool checkLeft,
-                           bool checkRight);
-  // \_     /
-  // |\    /
-  //   \  /
-  //    \/
-
-  void RefineCurrent(RegionID leftRegionID,
-                     RegionID rightRegionID,
-                     SegmentID oldSegmentID,
-                     SegmentID newSegmentID,
-                     const Vertex &intersection,
-                     int type);
+  SegmentID ResolveIntersection(RegionID curRegionID,
+                                SegmentID newSegmentID,
+                                bool checkLeft,
+                                bool checkRight);
 
   NodePair SplitRegionByVertex(RegionID regionID, VertexID vertexID);
-  NodePair SplitFirstRegionBySegment(RegionID regionID,
-                                     SegmentID segmentID,
-                                     int type /* 0 - high, 1 - mid, 2 - low */,
-                                     Region *regionToMerge = nullptr);
-  NodeID SplitSegmentByVertex(RegionID lastRegionID,
-                              VertexID highVertexID,
-                              const Vertex &intersectionVertex,
-                              bool leftIntersected); /* returns the other side ID */
+  void SplitRegionBySegment(RegionID regionID,
+                            SegmentID segmentID,
+                            int &type /* 0 - high, 1 - mid, 2 - low */);
 
-  void UpdateAbove(RegionID originalRegionID,
-                  RegionID highRegionID,
-                  RegionID lowRegionID,
-                  SegmentID segmentID,
-                  int type);
+  void UpdateAbove(Region &originalRegionID,
+                   Region &highRegionID,
+                   Region &lowRegionID,
+                   SegmentID segmentID,
+                   int type);
 
   int UpdateBelow(RegionID originalRegionID,
                   RegionID highRegionID,
@@ -125,11 +104,6 @@ protected:
                    VertexID vertex2_1,
                    VertexID vertex2_2,
                    Vertex *const intersection) const;
-  bool InInterval(double value,
-                  double low,
-                  double high       = 0,
-                  bool lowIncluded  = false,
-                  bool highIncluded = false);
   bool PointOnSegment();
 
   RegionID _nextRegion = INVALID_INDEX, _tmpRegionToMerge = INVALID_INDEX;
