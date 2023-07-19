@@ -3,18 +3,76 @@
 #include "trapezoidMapP.h"
 
 #include <cassert>
+#include <random>
 
 #define GET_REAL_ID(NODE_ID) _nodes[NODE_ID].value
 #define GET_VERTEX(NODE_ID) _vertices[GET_REAL_ID(NODE_ID)]
 #define GET_SEGMENT(NODE_ID) _segments[GET_REAL_ID(NODE_ID)]
 #define GET_REGION(NODE_ID) _regions[GET_REAL_ID(NODE_ID)]
 
-bool TrapezoidMapP::AddVertex(VertexID vertexID)
+void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
+{
+  unsigned int oldSize       = _vertices.Size(),
+               incrementSize = compactPoints ? points.size() : points.size() - 1;
+  _vertices.Reserve(oldSize + points.size());
+  _vertices.Pushback(points.data(), );
+
+  _permutation.reserve(_permutation.size() + incrementSize);
+
+  for (size_t i = oldSize; i < oldSize + incrementSize - 1; ++i)
+    _permutation.push_back({i, i + 1});
+  _permutation.push_back({oldSize + incrementSize - 1, oldSize});
+}
+
+void TrapezoidMapP::Build()
+{
+  // generate permutation
+  std::random_device rd;
+  std::mt19937 g(rd());
+
+  std::shuffle(_permutation.begin(), _permutation.end(), g);
+
+  size_t vertexCount = _permutation.size();
+
+  _segments.Reserve(vertexCount);
+  _endVertices.resize(vertexCount);
+  _prevVertices.resize(vertexCount);
+  _vertexAdded.resize(vertexCount);
+
+  // root
+  Region &rootRegion = NewRegion();
+  rootRegion.high = rootRegion.low = INFINITY_INDEX;
+  rootRegion.left = rootRegion.right = INFINITY_INDEX;
+  rootRegion.highNeighbors[0] = rootRegion.highNeighbors[1] = INFINITY_INDEX;
+  rootRegion.lowNeighbors[0] = rootRegion.lowNeighbors[1] = INFINITY_INDEX;
+
+  // leaves
+  size_t baseInd = 0;
+  while (true)
+  {
+    size_t end = std::min(baseInd + _phase, _permutation.size());
+    for (size_t i = baseInd; i < end; ++i)
+    {
+      const Index fromInd = _permutation[i].first;
+      const Index toInd   = _permutation[i].second;
+
+      AddSegment(fromInd, toInd);
+    }
+
+    baseInd = end;
+    if (baseInd >= _permutation.size())
+      break;
+
+    UpdateVertexPosition();
+  }
+}
+
+bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)
 {
   if (Valid(_vertexAdded[vertexID]))
     return true;
 
-  RegionID vertexRegion = Query(_vertices[vertexID]);
+  RegionID vertexRegion = QueryFrom(startNodeID, vertexID);
   Node &originalNode    = _nodes[_regions[vertexRegion].nodeID];
 
   auto [highRegion, lowRegion] = SplitRegionByVertex(vertexRegion, vertexID);
@@ -35,7 +93,7 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
 
   bool highAdded = AddVertex(segment.highVertex), lowAdded = AddVertex(segment.lowVertex);
 
-  SegmentID splittedSegment = segmentID;
+  SegmentID splittedSegment = INVALID_INDEX;
 
   while (Valid(segmentID))
   {
@@ -44,28 +102,53 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
         GetFirstIntersectedRegion(segment.highVertex, segment.lowVertex, &type);
     Region &originalRegion = _regions[originalRegionID];
 
-    splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+    if (config.checkIntersection)
+      splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
 
     SplitRegionBySegment(originalRegionID, segmentID, type);
 
     while (Valid(_nextRegion))
     {
       assert(!Valid(splittedSegment));
-      splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+      if (config.checkIntersection)
+        splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
       SplitRegionBySegment(originalRegionID, segmentID, type);
     }
 
     segmentID = splittedSegment;
   }
+
+  return true;
 }
 
-RegionID TrapezoidMapP::Query(const Vertex &point)
+RegionID TrapezoidMapP::Query(VertexID vertexIDtoQuery)
 {
   assert(_regions.Size());
-  return QueryFrom(ROOT_NODE_ID, point);
+  return QueryFrom(ROOT_NODE_ID, vertexIDtoQuery);
 }
 
-RegionID TrapezoidMapP::QueryFrom(NodeID nodeID, const Vertex &point) {}
+RegionID TrapezoidMapP::QueryFrom(NodeID nodeID, VertexID vertexIDtoQuery)
+{
+  Node *node      = &_nodes[nodeID];
+  Node::Type type = node->type;
+  while (type != Node::REGION)
+  {
+    if (type == Node::VERTEX)
+    {
+      VertexID vertexID = node->value;
+      node = Higher(vertexIDtoQuery, vertexID) ? &_nodes[node->left] : &_nodes[node->right];
+    }
+    else
+    {
+      assert(type == Node::SEGMENT);
+      const Segment &segment = _segments[node->value];
+      node = Higher(vertexIDtoQuery, segment.highVertex, segment.lowVertex) ? &_nodes[node->left]
+                                                                            : &_nodes[node->right];
+    }
+    type = node->type;
+  }
+  return node->value;
+}
 
 NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID)
 {

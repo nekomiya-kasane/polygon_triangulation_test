@@ -10,9 +10,10 @@ using Index                          = unsigned int;
 using Indexes                        = std::vector<Index>;
 using NodeIndex                      = unsigned int;
 using NodeIndexes                    = std::vector<NodeIndex>;
-constexpr NodeIndex INVALID_INDEX    = 0; /* valid from 1 */
-constexpr NodeIndex DEGENRATED_INDEX = -1;
-constexpr NodeIndex ROOT_NODE_ID     = 1;
+constexpr NodeIndex INFINITY_INDEX   = -1;
+constexpr NodeIndex INVALID_INDEX    = -1;
+constexpr NodeIndex DEGENRATED_INDEX = -2;
+constexpr NodeIndex ROOT_NODE_ID     = 0;
 using Depth                          = unsigned short;
 constexpr Depth INVALID_DEPTH        = 0;
 constexpr double INVALID_ANGLE_P     = 4;
@@ -41,7 +42,7 @@ struct Node
 
 struct RegionNode : public Node
 {
-  RegionNode(Index ind) : Node{REGION, ind} {}
+  RegionNode(Index ind) : Node{REGION} { nodeID = ind; }
 
   NodeIndex highVertexID = INVALID_INDEX, lowVertexID = INVALID_INDEX;
 

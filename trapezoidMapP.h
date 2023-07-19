@@ -12,16 +12,24 @@
 class TrapezoidMapP
 {
 public:
+  void AddPolygon(const Vec2Set& points, bool compactPoints = false);
+  // void AddSegments(const std::vector<std::pair<VertexID, VertexID>> &vertexPairs);
   void Build();
 
-  // AddVertex: true - already added, false - newly added
-  bool AddVertex(VertexID vertexID);
-  bool AddSegment(SegmentID segmentID);
-
-  RegionID Query(const Vertex &point);
-  RegionID QueryFrom(RegionID region, const Vertex &point);
+  struct
+  {
+    double tolerance       = 1e-16;
+    bool checkIntersection = false;
+  } config;
 
 protected:
+  // AddVertex: true - already added, false - newly added
+  bool AddVertex(VertexID vertexID, NodeID startNodeID = ROOT_NODE_ID);
+  bool AddSegment(SegmentID segmentID);
+
+  RegionID Query(VertexID vertexID);
+  RegionID QueryFrom(NodeID regionID, VertexID vertexID);
+
   VertexID AppendVertex(const Vertex &vertex);
   SegmentID AppendSegment(bool downward);
 
