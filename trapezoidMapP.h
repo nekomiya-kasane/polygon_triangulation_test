@@ -16,7 +16,7 @@ public:
 
   // AddVertex: true - already added, false - newly added
   bool AddVertex(VertexID vertexID);
-  bool AddSegment(VertexID from, VertexID to);
+  bool AddSegment(SegmentID segmentID);
 
   RegionID Query(const Vertex &point);
   RegionID QueryFrom(RegionID region, const Vertex &point);
@@ -69,16 +69,16 @@ protected:
     return node.id;
   }
 
-  RegionID GetRegionNext(VertexID highVertex, VertexID refVertex);
+  RegionID GetRegionNext(VertexID highVertex, VertexID refVertex, int *type);
   RegionID GetRegionNext(RegionID thisRegionID, VertexID highVertex, VertexID lowVertex);
 
   void ResolvePossibleIntersectionL();
   void ResolvePossibleIntersectionR();
   void ResolvePossibleIntersectionM();
-  SegmentID ResolveIntersection(RegionID curRegionID,
-                                SegmentID newSegmentID,
-                                bool checkLeft,
-                                bool checkRight);
+  void ResolveIntersection(RegionID curRegionID,
+                           SegmentID newSegmentID,
+                           bool checkLeft,
+                           bool checkRight);
   // \_     /
   // |\    /
   //   \  /
@@ -92,16 +92,25 @@ protected:
                      int type);
 
   NodePair SplitRegionByVertex(RegionID regionID, VertexID vertexID);
-  NodePair SplitRegionBySegment(RegionID regionID,
-                                SegmentID segmentID,
-                                VertexID segmentHighVertexID,
-                                VertexID segmentLowVertexID,
-                                int type /* 0 - high, 1 - mid, 2 - low */);
+  NodePair SplitFirstRegionBySegment(RegionID regionID,
+                                     SegmentID segmentID,
+                                     int type /* 0 - high, 1 - mid, 2 - low */,
+                                     Region *regionToMerge = nullptr);
   NodeID SplitSegmentByVertex(RegionID lastRegionID,
                               VertexID highVertexID,
-
                               const Vertex &intersectionVertex,
                               bool leftIntersected); /* returns the other side ID */
+
+  void UpdateAbove(RegionID originalRegionID,
+                  RegionID highRegionID,
+                  RegionID lowRegionID,
+                  SegmentID segmentID,
+                  int type);
+
+  int UpdateBelow(RegionID originalRegionID,
+                  RegionID highRegionID,
+                  RegionID lowRegionID,
+                  SegmentID segmentID);
 
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
   int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
@@ -123,5 +132,6 @@ protected:
                   bool highIncluded = false);
   bool PointOnSegment();
 
-  RegionID _nextRegion = INVALID_INDEX;
+  RegionID _nextRegion = INVALID_INDEX, _tmpRegionToMerge = INVALID_INDEX;
+  int _mergeType = 0;
 };
