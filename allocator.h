@@ -21,6 +21,13 @@ public:
     _top  = _data + count;
     _next = _data + size;
   }
+  inline void Extend(size_t count) { Reserve(count + Size()); }
+  inline void Sqeeze()
+  {
+    auto size = Size();
+    _data     = (T *)realloc(_data, sizeof(T) * size);
+    _top = _next = _data + size;
+  }
 
   inline unsigned int Size() const { return _next - _data; }
   inline unsigned int Capability() const { return _top - _data; }
@@ -32,7 +39,7 @@ public:
     memcpy(_next, begin, size * sizeof(T));
     _next += size;
   }
-  inline unsigned int Pushback(const T& element)
+  inline unsigned int Pushback(const T &element)
   {
     if (Capability() <= Size())
       Reserve(1 + Size());

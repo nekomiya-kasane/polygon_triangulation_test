@@ -3,6 +3,7 @@
 #include "trapezoidMapP.h"
 
 #include <cassert>
+#include <queue>
 #include <random>
 
 #define GET_REAL_ID(NODE_ID) _nodes[NODE_ID].value
@@ -14,14 +15,32 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 {
   unsigned int oldSize       = _vertices.Size(),
                incrementSize = compactPoints ? points.size() : points.size() - 1;
-  _vertices.Reserve(oldSize + points.size());
-  _vertices.Pushback(points.data(), );
 
-  _permutation.reserve(_permutation.size() + incrementSize);
+  _vertices.Reserve(oldSize + points.size());
+  _segments.Reserve(oldSize + points.size());
+  _endVertices.reserve(_endVertices.size() + incrementSize);
+  _prevVertices.reserve(_endVertices.size() + incrementSize);
+
+  _vertices.Pushback(points.data(), incrementSize);
+
+  static auto appendSegment = [this](VertexID from, VertexID to) {
+    bool downward = Higher(from, to);
+
+    SegmentID segmentID = this->AppendSegment(downward);
+    Segment &segment    = _segments[segmentID];
+
+    segment.highVertex = downward ? from : to;
+    segment.lowVertex  = downward ? to : from;
+
+    _endVertices[from] = to;
+    _prevVertices[to]  = from;
+
+    _permutation.push_back(segmentID);
+  };
 
   for (size_t i = oldSize; i < oldSize + incrementSize - 1; ++i)
-    _permutation.push_back({i, i + 1});
-  _permutation.push_back({oldSize + incrementSize - 1, oldSize});
+    appendSegment(i, i + 1);
+  appendSegment(oldSize + incrementSize - 1, oldSize);
 }
 
 void TrapezoidMapP::Build()
@@ -32,12 +51,7 @@ void TrapezoidMapP::Build()
 
   std::shuffle(_permutation.begin(), _permutation.end(), g);
 
-  size_t vertexCount = _permutation.size();
-
-  _segments.Reserve(vertexCount);
-  _endVertices.resize(vertexCount);
-  _prevVertices.resize(vertexCount);
-  _vertexAdded.resize(vertexCount);
+  _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
 
   // root
   Region &rootRegion = NewRegion();
@@ -46,30 +60,50 @@ void TrapezoidMapP::Build()
   rootRegion.highNeighbors[0] = rootRegion.highNeighbors[1] = INFINITY_INDEX;
   rootRegion.lowNeighbors[0] = rootRegion.lowNeighbors[1] = INFINITY_INDEX;
 
+  // refine phase
+  if (!config.phase)
+  {
+    unsigned int i = 0;
+    double n       = _vertices.Size();
+    while (n >= 1.0f)
+    {
+      n = std::log(n);
+      ++i;
+    }
+    config.phase = i - 1;
+  }
+
   // leaves
   size_t baseInd = 0;
   while (true)
   {
-    size_t end = std::min(baseInd + _phase, _permutation.size());
+    // one phase
+    size_t end = std::min(baseInd + config.phase, _permutation.size());
     for (size_t i = baseInd; i < end; ++i)
-    {
-      const Index fromInd = _permutation[i].first;
-      const Index toInd   = _permutation[i].second;
-
-      AddSegment(fromInd, toInd);
-    }
+      AddSegment(_permutation[i]);
 
     baseInd = end;
     if (baseInd >= _permutation.size())
       break;
 
-    UpdateVertexPosition();
+    // update vertex
+    for (size_t i = 0; i < _vertexRegions.size(); ++i)
+    {
+      NodeID &regionNodeID = _vertexRegions[i];
+      if (!Valid(regionNodeID))
+        continue;  // already added
+
+      regionNodeID = _regions[QueryFrom(regionNodeID, i)].nodeID;
+    }
   }
+
+  // assign depth
+  AssignDepth();
 }
 
 bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)
 {
-  if (Valid(_vertexAdded[vertexID]))
+  if (!Valid(_vertexRegions[vertexID]))
     return true;
 
   RegionID vertexRegion = QueryFrom(startNodeID, vertexID);
@@ -82,6 +116,8 @@ bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)
   originalNode.left  = highRegion;
   originalNode.right = lowRegion;
   originalNode.value = vertexID;
+
+  _vertexRegions[vertexID] = INVALID_INDEX;  // invalid for already added vertex
 
   return false;
 }
@@ -148,6 +184,26 @@ RegionID TrapezoidMapP::QueryFrom(NodeID nodeID, VertexID vertexIDtoQuery)
     type = node->type;
   }
   return node->value;
+}
+
+VertexID TrapezoidMapP::AppendVertex(const Vertex &vertex)
+{
+  assert(_vertices.Size() == _endVertices.size());
+  assert(_vertices.Size() == _prevVertices.size());
+  assert(_vertices.Size() == _vertexRegions.size());
+
+  VertexID id = _vertices.Pushback(vertex);
+
+  _endVertices.push_back(INVALID_INDEX);
+  _prevVertices.push_back(INVALID_INDEX);
+  _vertexRegions.push_back(ROOT_NODE_ID);
+  _lowNeighbors.emplace_back();
+}
+
+SegmentID TrapezoidMapP::AppendSegment(bool dir)
+{
+  SegmentID id = _segments.Pushback(Segment{INVALID_INDEX, INVALID_INDEX, dir});
+  return id;
 }
 
 NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID)
@@ -396,8 +452,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         }
       }
 
-      SplitRegionByVertex(leftRegionID, leftNewVertexID);  // will be added to the tree
-      SplitRegionByVertex(curRegionID, rightNewVertexID);
+      AddVertex(leftNewVertexID, leftRegion->nodeID);
+      AddVertex(rightNewVertexID, region.nodeID);
 
       // resolve left regions
       VertexID footVertexID = leftRegion->low;
@@ -516,8 +572,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         }
       }
 
-      SplitRegionByVertex(rightRegionID, leftNewVertexID);
-      SplitRegionByVertex(curRegionID, rightNewVertexID);
+      AddVertex(leftNewVertexID, rightRegion->nodeID);
+      AddVertex(rightNewVertexID, region.nodeID);
 
       // resolve right regions
       VertexID footVertexID = rightRegion->low;
@@ -595,6 +651,52 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
   }
 }
 
+void TrapezoidMapP::AssignDepth()
+{
+  assert(_regions[0].depth == INVALID_DEPTH);  // topmost region
+  std::stack<Region *> curStack, nextStack;
+  nextStack.push(&_regions[0]);
+
+  Depth curDepth = 0;
+  while (!nextStack.empty())
+  {
+    curStack = std::move(nextStack);
+
+    // dye all neighbors
+    while (!curStack.empty())
+    {
+      Region *curRegion = curStack.top();
+      curStack.pop();
+
+      curRegion->depth = curDepth;
+
+      // cross segment
+      Segment &leftSegment  = _segments[curRegion->left],
+              &rightSegment = _segments[curRegion->right];
+
+      RegionID midID         = _lowNeighbors[leftSegment.highVertex].mid;
+      RegionID leftNeighbor  = Valid(midID) ? midID : _lowNeighbors[leftSegment.highVertex].left;
+      midID                  = _lowNeighbors[rightSegment.highVertex].mid;
+      RegionID rightNeighbor = Valid(midID) ? midID : _lowNeighbors[rightSegment.highVertex].right;
+      nextStack.push(&_regions[leftNeighbor]);
+      nextStack.push(&_regions[rightNeighbor]);
+
+      // flood
+      for (const auto neighborID : {curRegion->highNeighbors[0], curRegion->highNeighbors[1],
+                                    curRegion->lowNeighbors[0], curRegion->lowNeighbors[1]})
+      {
+        if (!Valid(neighborID) || neighborID == INFINITY_INDEX)
+          continue;
+
+        Region &neighbor = _regions[neighborID];
+        assert(neighbor.depth == INVALID_DEPTH || neighbor.depth == curDepth);
+        if (neighbor.depth == INVALID_DEPTH)
+          curStack.push(&neighbor);
+      }
+    }
+  }
+}
+
 bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
   const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
@@ -604,6 +706,7 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
     return !!res;
 
   // same x, y: latter vertex always on the right, is this OK?
+  // todo: in paper, another random integer is assigned to determine this.
   assert(leftVertexID != rightVertexID);
   return leftVertexID < rightVertexID;
 }

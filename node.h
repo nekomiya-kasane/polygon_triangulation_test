@@ -15,7 +15,7 @@ constexpr NodeIndex INVALID_INDEX    = -1;
 constexpr NodeIndex DEGENRATED_INDEX = -2;
 constexpr NodeIndex ROOT_NODE_ID     = 0;
 using Depth                          = unsigned short;
-constexpr Depth INVALID_DEPTH        = 0;
+constexpr Depth INVALID_DEPTH        = -1;
 constexpr double INVALID_ANGLE_P     = 4;
 constexpr double INVALID_ANGLE_N     = -4;
 

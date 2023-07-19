@@ -12,14 +12,14 @@
 class TrapezoidMapP
 {
 public:
-  void AddPolygon(const Vec2Set& points, bool compactPoints = false);
-  // void AddSegments(const std::vector<std::pair<VertexID, VertexID>> &vertexPairs);
+  void AddPolygon(const Vec2Set &points, bool compactPoints = false);
   void Build();
 
   struct
   {
     double tolerance       = 1e-16;
     bool checkIntersection = false;
+    unsigned short phase   = 0; /* phase to update region cache of vertices */
   } config;
 
 protected:
@@ -33,6 +33,14 @@ protected:
   VertexID AppendVertex(const Vertex &vertex);
   SegmentID AppendSegment(bool downward);
 
+  void AssignDepth();
+
+  std::vector<SegmentID> _permutation;
+
+  // for merging
+  RegionID _nextRegion = INVALID_INDEX, _tmpRegionToMerge = INVALID_INDEX;
+  int _mergeType = 0;
+
 protected:
   Allocator<Node> _nodes;
   Allocator<Region> _regions;
@@ -41,15 +49,16 @@ protected:
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
   std::vector<VertexID> _endVertices, _prevVertices;
-  std::vector<NodeID> _vertexAdded;
 
+  // for vertex queries
   struct VertexNeighborInfo
   {
     RegionID left = INVALID_INDEX, mid = INVALID_INDEX, right = INVALID_INDEX;
 
     inline int Size() const { return Valid(left) + Valid(mid) + Valid(right); }
   };
-  std::vector<VertexNeighborInfo> _lowNeighbors;  // for vertices
+  std::vector<VertexNeighborInfo> _lowNeighbors;
+  std::vector<NodeID> _vertexRegions;  // invalid for already added
 
 protected:
   inline static bool Valid(NodeID index) { return index != INVALID_INDEX; }
@@ -113,7 +122,4 @@ protected:
                    VertexID vertex2_2,
                    Vertex *const intersection) const;
   bool PointOnSegment();
-
-  RegionID _nextRegion = INVALID_INDEX, _tmpRegionToMerge = INVALID_INDEX;
-  int _mergeType = 0;
 };

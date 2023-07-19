@@ -46,8 +46,8 @@ struct Region
 struct Segment
 {
   // NodeID nodeID;
-  VertexID highVertex, lowVertex;
-  bool downward;
+  /* don't move this line */ VertexID highVertex, lowVertex;
+  /* don't move this line */ bool downward;
 
   const VertexID &from() const { return downward ? highVertex : lowVertex; }
   const VertexID &from() const { return downward ? highVertex : lowVertex; }
