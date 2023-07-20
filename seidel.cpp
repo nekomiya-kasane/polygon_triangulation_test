@@ -85,14 +85,14 @@ SegmentNode *Triangulator::AddSegment(Index fromInd, Index toInd)
 
   SplitRegionByEdge(curRegion, highVertexID, lowVertexID, downward, occasion);
   UpdateFirstSplitRegion(curRegion);
-  UpdateRegionsAbovePoints(curRegion);
+  UpdateRegionsBelowPoints(curRegion);
   curRegion = FindRegionBelow(curRegion);
   while (curRegion != bottomNode->right)
   {
     curRegion = FindRegionBelow(curRegion, highVertexID, lowVertexID);
     SplitRegionByEdge(curRegion);
     UpdateMiddleSplitRegion(curRegion);
-    UpdateRegionsAbovePoints();
+    UpdateRegionsBelowPoints();
     curRegion = FindRegionBelow(curRegion);
   }
   UpdateLastSplitRegion(curRegion);
@@ -182,11 +182,16 @@ NodeIndex Triangulator::FindRegionBelow(NodeIndex regionID,
   // occasion 2: 2 regions below
   VertexNode *splitVertex = GET_VERTEX(region->lowVertexID), *highVertex = GET_VERTEX(highVertexID),
              *lowVertex = GET_VERTEX(lowVertexID);
-  bool collinear        = Collinear(splitVertex->pos, lowVertex->pos, highVertex->pos);
-  if (!collinear && VertexLefter(splitVertex->pos, lowVertex->pos, highVertex->pos))
+  
+  // todo: handle intersection
+  // bool collinear        = Collinear(splitVertex->pos, lowVertex->pos, highVertex->pos);
+  /*if (!collinear && VertexLefter(splitVertex->pos, lowVertex->pos, highVertex->pos))
     return region->lrID;
   else if (!collinear)
-    return region->llID;
+    return region->llID;*/
+  if (VertexLefter(splitVertex->pos, lowVertex->pos, highVertex->pos))
+    return region->lrID;
+  return region->llID;
 
   // todo: collinear
 }
@@ -222,7 +227,7 @@ NodeIndex Triangulator::SplitRegionByPoint(NodeIndex regionID, Index pointID)
   return lowerRegionID;
 }
 
-RegionNode *Triangulator::SplitRegionByEdge(NodeIndex regionID,
+std::pair<NodeIndex, NodeIndex> Triangulator::SplitRegionByEdge(NodeIndex regionID,
                                             NodeIndex highVertexID,
                                             NodeIndex lowVertexID,
                                             bool downward,
@@ -241,6 +246,7 @@ RegionNode *Triangulator::SplitRegionByEdge(NodeIndex regionID,
   {
     case HIGH_REGION_LOW_REGION:
     {
+
     }
   }
 }
@@ -357,7 +363,8 @@ bool Triangulator::VertexHigher(const Vec2 &left, const Vec2 &right) const
   if (left.x != right.x)
     return left.x > right.x;
 
-  // todo: coincident: use id to index
+  // todo: coincident: use id to index (record the next non-zero length segment)
+  return true;
 }
 
 bool Triangulator::VertexLefter(const Vec2 &point, const Vec2 &low, const Vec2 &high) const

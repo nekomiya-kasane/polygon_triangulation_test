@@ -3,8 +3,22 @@ project(SeidelAlgorithm)
 
 set(CMAKE_CXX_STANDARD 17)
 
-file(GLOB_RECURSE SeidelSources "./*.cpp")
-file(GLOB_RECURSE SeidelHeaders "./*.h")
+# file(GLOB_RECURSE SeidelSources "./*.cpp")
+# file(GLOB_RECURSE SeidelHeaders "./*.h")
+
+set(SeidelSources
+	"vec2.cpp"
+	"trapezoidMapP.cpp"
+	"triangulator.cpp"
+)
+set(SeidelHeaders 
+	"vec2.h"
+	"primitives.h"
+	"allocator.h"
+	"node.h"
+	"trapezoidMapP.h"
+	"triangulator.h"
+)
 
 add_library(seidel STATIC)
 target_sources(seidel PRIVATE ${SeidelSources} ${SeidelHeaders})
