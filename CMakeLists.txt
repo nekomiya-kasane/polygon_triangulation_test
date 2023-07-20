@@ -7,15 +7,17 @@ set(CMAKE_CXX_STANDARD 17)
 # file(GLOB_RECURSE SeidelHeaders "./*.h")
 
 set(SeidelSources
-	"trapezoidMapP.cpp"
 	"vec2.cpp"
+	"trapezoidMapP.cpp"
+	"triangulator.cpp"
 )
 set(SeidelHeaders 
-	"trapezoidMapP.h"
 	"vec2.h"
 	"primitives.h"
-	"node.h"
 	"allocator.h"
+	"node.h"
+	"trapezoidMapP.h"
+	"triangulator.h"
 )
 
 add_library(seidel STATIC)

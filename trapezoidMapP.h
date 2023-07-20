@@ -9,6 +9,8 @@
 #include <set>
 #include <unordered_map>
 
+#define GET_REAL_ID(NODE_ID) _nodes[NODE_ID].value
+
 class TrapezoidMapP
 {
 public:
@@ -33,7 +35,7 @@ protected:
   VertexID AppendVertex(const Vertex &vertex);
   SegmentID AppendSegment(bool downward);
 
-  void AssignDepth();
+  virtual void AssignDepth();
 
   std::vector<SegmentID> _permutation;
 
