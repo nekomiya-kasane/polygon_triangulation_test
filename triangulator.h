@@ -15,13 +15,7 @@ class Triangulator : public TrapezoidMapP
 public:
   // virtual void AssignDepth() override;
 
-  Triangles Triangulate();
-
-  Mountains ExtractMountains();
-  void ExtractCycles();
-
-  Triangles EarClipping(const Mountain &mountain);
-  Triangles ChimneyClipping(const Mountain &mountain);
+  Triangles Triangulate() const;
 
   struct
   {
@@ -34,8 +28,13 @@ public:
   } config;
 
 protected:
-  std::vector<bool> _vertexTransversed;
+  Mountains ExtractMountains() const;
 
-protected:
-  bool IsConvex(VertexID vertices[3]);
+  Triangles TriangulateMountain(const Mountain &mountain, Triangles &out) const;
+
+  Triangles EarClipping(const Mountain &mountain, Triangles &out) const;
+  Triangles ChimneyClipping(const Mountain &mountain, Triangles &out) const;
+
+  bool IsZeroSize(VertexID vertices[3]) const;
+  bool IsConvex(VertexID vertices[3]) const;
 };

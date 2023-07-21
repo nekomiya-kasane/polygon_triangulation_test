@@ -59,7 +59,7 @@ public:
     ++_next;
   }
 
-  inline size_type GetIndex(T *elementPtr) const
+  inline size_type GetIndex(const T *const elementPtr) const
   {
     assert((elementPtr < _top) && (elementPtr >= _data));
     assert(((char *)elementPtr - (char *)_data) % sizeof(T))
