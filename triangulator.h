@@ -5,7 +5,13 @@
 #include <list>  // todo: memory issue
 #include <map>
 
-using Triangle  = Vec2[3];
+struct Triangle
+{
+  Vec2 vertices[3];
+
+  inline Vec2 &operator[](unsigned short i) { return vertices[i]; }
+  inline const Vec2 &operator[](unsigned short i) const { return vertices[i]; }
+};
 using Triangles = std::vector<Triangle>;
 using Mountain  = std::vector<VertexID>;  // first is the base
 using Mountains = std::vector<Mountain>;  // first is the base

@@ -11,7 +11,8 @@ using SegmentID = AnyID;
 using RegionID  = AnyID;
 using Depth     = short;
 
-constexpr unsigned int INVALID_INDEX = -1, INFINITY_INDEX = -2, ROOT_REGION_ID;
+constexpr unsigned int INVALID_INDEX = -1, INFINITY_INDEX = -2, ROOT_REGION_ID = 0,
+                       ROOT_NODE_ID = 0, INVALID_DEPTH = -1;
 
 struct Node
 {
@@ -50,8 +51,8 @@ struct Segment
   /* don't move this line */ bool downward;
 
   const VertexID &from() const { return downward ? highVertex : lowVertex; }
-  const VertexID &from() const { return downward ? highVertex : lowVertex; }
-  VertexID &to() { return downward ? lowVertex : highVertex; }
+  const VertexID &to() const { return downward ? lowVertex : highVertex; }
+  VertexID &from() { return downward ? highVertex : lowVertex; }
   VertexID &to() { return downward ? lowVertex : highVertex; }
 };
 

@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cassert>
+
 template <class T, class SizeType = unsigned int>
 class Allocator
 {
+public:
   ~Allocator() { free(_data); }
 
 public:
@@ -11,7 +14,7 @@ public:
   template <class... Args>
   T &New(Args... args)
   {
-    T *res = new (_next) T(args);
+    T *res = new (_next) T(args...);
     _next++;
     return *res;
   }
@@ -41,8 +44,8 @@ public:
     _top = _next = _data + size;
   }
 
-  inline size_type Size() const { return _next - _data; }
-  inline size_type Capability() const { return _top - _data; }
+  inline size_type Size() const { return static_cast<size_type>(_next - _data); }
+  inline size_type Capability() const { return static_cast<size_type>(_top - _data); }
 
   inline size_type Pushback(const T *begin, size_t size)
   {
@@ -50,6 +53,7 @@ public:
       Reserve(size + Size());
     memcpy(_next, begin, size * sizeof(T));
     _next += size;
+    return Size() - 1;
   }
   inline size_type Pushback(const T &element)
   {
@@ -57,12 +61,14 @@ public:
       Reserve(1 + Size());
     memcpy(_next, &element, sizeof(T));
     ++_next;
+    return Size() - 1;
   }
 
   inline size_type GetIndex(const T *const elementPtr) const
   {
     assert((elementPtr < _top) && (elementPtr >= _data));
-    assert(((char *)elementPtr - (char *)_data) % sizeof(T))
+    assert(((char *)elementPtr - (char *)_data) % sizeof(T));
+    return static_cast<size_type>(elementPtr - _data);
   }
 
   inline T &operator[](size_t index) { return *(_data + index); }

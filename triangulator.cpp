@@ -223,6 +223,8 @@ Mountains Triangulator::ExtractMountains() const
       ProcedureRight(region, rightSegmentID, rightSegment);
     }
   }
+
+  return mountains;
 }
 
 Triangles Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out) const
@@ -254,20 +256,20 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
   //       if the neighboring vertex is not an endpoint of the base, and was made convex by cutting
   //       off the ear, then add this neighbor to the list
 
-  std::vector<VertexID> prevs, nexts, current;
+  std::vector<unsigned int> prevs, nexts, current;
   prevs.reserve(mountain.size());
   nexts.reserve(mountain.size());
-  size_t n = mountain.size();
+  unsigned int n = static_cast<unsigned int>(mountain.size());
 
   VertexID family[3];
-  for (VertexID i = 0; i < n; ++i)
+  for (unsigned int i = 0; i < n; ++i)
   {
     prevs.push_back(i ? i - 1 : n - 1);
     nexts.push_back(i == n - 1 ? 0 : i + 1);
 
-    family[0] = prevs[i];
-    family[1] = i;
-    family[2] = nexts[i];
+    family[0] = mountain[prevs[i]];
+    family[1] = mountain[i];
+    family[2] = mountain[nexts[i]];
 
     if (IsConvex(family))
     {
@@ -275,30 +277,33 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
     }
   }
 
-  VertexID thisVertex = current.back(), base1 = mountain.front(), base2 = mountain.back();
+  unsigned int cur = 0;
   while (n)
   {
-    VertexID prev = prevs[thisVertex], next = nexts[thisVertex];
-    out.push_back(Triangle{_vertices[prev], _vertices[thisVertex], _vertices[next]});
+    cur = current.back();
 
-    prevs[next]       = prev;
-    nexts[prev]       = next;
-    prevs[thisVertex] = nexts[thisVertex] = INVALID_INDEX;
+    VertexID prev = prevs[cur], next = nexts[cur];
+    out.push_back(
+        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]});
+
+    prevs[next] = prev;
+    nexts[prev] = next;
+    prevs[cur] = nexts[cur] = INVALID_INDEX;
 
     current.pop_back();
 
     // prev neighbor
-    family[0] = prevs[prev];
-    family[1] = prev;
-    family[2] = nexts[prev];
-    if (base1 != prev && base2 != prev && IsConvex(family))
+    family[0] = mountain[prevs[prev]];
+    family[1] = mountain[prev];
+    family[2] = mountain[nexts[prev]];
+    if (0 != prev && (n - 1) != prev && IsConvex(family))  // not base && is convex
       current.push_back(prev);
 
     // next neighbor
-    family[0] = prevs[next];
-    family[1] = next;
-    family[2] = nexts[next];
-    if (base1 != next && base2 != next && IsConvex(family))
+    family[0] = mountain[prevs[next]];
+    family[1] = mountain[next];
+    family[2] = mountain[nexts[next]];
+    if (0 != next && (n - 1) != next && IsConvex(family))
       current.push_back(next);
   }
 

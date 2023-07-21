@@ -3,7 +3,6 @@
 #include "allocator.h"
 #include "vec2.h"
 
-#include "node.h"
 #include "primitives.h"
 
 #include <set>
@@ -35,7 +34,7 @@ protected:
   VertexID AppendVertex(const Vertex &vertex);
   SegmentID AppendSegment(bool downward);
 
-  virtual void AssignDepth();
+  void AssignDepth();
 
   std::vector<SegmentID> _permutation;
 
@@ -66,16 +65,16 @@ protected:
   inline static bool Valid(NodeID index) { return index != INVALID_INDEX; }
   inline Node &NewNode(Node::Type type)
   {
-    Node node = _nodes.New();
-    node.id   = _nodes.Size() - 1;
-    node.type = type;
+    Node &node = _nodes.New();
+    node.id    = _nodes.Size() - 1;
+    node.type  = type;
     return node;
   }
   template <class... Args>
   Region &NewRegion(Args... args)
   {
     Node &node     = NewNode(Node::REGION);
-    Region &region = _regions.New(args);
+    Region &region = _regions.New(args...);
     node.value     = _regions.Size() - 1;
     region.nodeID  = _nodes.Size() - 1;
     return region;

@@ -15,7 +15,6 @@ set(SeidelHeaders
 	"vec2.h"
 	"primitives.h"
 	"allocator.h"
-	"node.h"
 	"trapezoidMapP.h"
 	"triangulator.h"
 )

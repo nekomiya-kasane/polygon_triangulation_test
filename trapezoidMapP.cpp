@@ -13,8 +13,9 @@
 
 void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 {
-  unsigned int oldSize       = _vertices.Size(),
-               incrementSize = compactPoints ? points.size() : points.size() - 1;
+  unsigned int oldSize = _vertices.Size(),
+               incrementSize =
+                   static_cast<unsigned int>(compactPoints ? points.size() : points.size() - 1);
 
   _vertices.Reserve(oldSize + points.size());
   _segments.Reserve(oldSize + points.size());
@@ -38,7 +39,7 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
     _permutation.push_back(segmentID);
   };
 
-  for (size_t i = oldSize; i < oldSize + incrementSize - 1; ++i)
+  for (VertexID i = oldSize; i < oldSize + incrementSize - 1; ++i)
     appendSegment(i, i + 1);
   appendSegment(oldSize + incrementSize - 1, oldSize);
 }
@@ -93,7 +94,7 @@ void TrapezoidMapP::Build()
       if (!Valid(regionNodeID))
         continue;  // already added
 
-      regionNodeID = _regions[QueryFrom(regionNodeID, i)].nodeID;
+      regionNodeID = _regions[QueryFrom(regionNodeID, (VertexID)i)].nodeID;
     }
   }
 
@@ -198,6 +199,8 @@ VertexID TrapezoidMapP::AppendVertex(const Vertex &vertex)
   _prevVertices.push_back(INVALID_INDEX);
   _vertexRegions.push_back(ROOT_NODE_ID);
   _lowNeighbors.emplace_back();
+
+  return id;
 }
 
 SegmentID TrapezoidMapP::AppendSegment(bool dir)
@@ -587,8 +590,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       }
 
       // resolve left regions
-      Region *rightRegion = &region;
-      footVertexID        = rightRegion->low;
+      Region *leftRegion = &region;
+      footVertexID       = leftRegion->low;
       while (footVertexID != rightLowVertexID)
       {
         rightRegionID = rightRegion->lowNeighbors[1];
@@ -647,8 +650,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       newSegment.lowVertex = leftNewVertexID;
       return newNewSubsegmentID;
     }
-    return INVALID_INDEX;
   }
+  return INVALID_INDEX;
 }
 
 void TrapezoidMapP::AssignDepth()
