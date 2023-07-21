@@ -117,10 +117,10 @@ protected:
   int Higher /* Lefter */ (const Vertex &refVertex,
                            const Vertex &highVertex,
                            const Vertex &lowVertex) const;
-  bool Intersected(VertexID vertex1_1,
-                   VertexID vertex1_2,
-                   VertexID vertex2_1,
-                   VertexID vertex2_2,
+  bool Intersected(VertexID segment1_Start,
+                   VertexID segment1_End,
+                   VertexID segment2_Start,
+                   VertexID segment2_End,
                    Vertex *const intersection) const;
-  bool PointOnSegment();
+  // bool PointOnSegment();  // todo: "T" type coincidence
 };

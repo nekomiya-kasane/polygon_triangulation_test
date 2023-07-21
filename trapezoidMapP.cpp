@@ -752,3 +752,43 @@ int TrapezoidMapP::Higher(const Vertex &refVertex,
 
   return -1;
 }
+
+bool TrapezoidMapP::Intersected(VertexID segment1_Start,
+                                VertexID segment1_End,
+                                VertexID segment2_Start,
+                                VertexID segment2_End,
+                                Vertex *const intersection) const
+{
+  const Vertex &s1 = _vertices[segment1_Start], &e1 = _vertices[segment1_End],
+               &s2 = _vertices[segment2_Start], &e2 = _vertices[segment2_End];
+
+  Vec2 vec1 = e1 - s1, vec2 = e2 - s2, s2s1 = s1 - s2;
+
+  double denom = vec1 ^ vec2;
+  if (denom == 0)
+    return false;  // todo: handle coincidence
+
+  bool denomPositive = denom > 0;
+
+  double s_numer = vec1 ^ s2s1;
+  if ((s_numer < 0) == denomPositive)
+    return false;  // No collision
+
+  double t_numer = vec2 ^ s2s1;
+  if ((t_numer < 0) == denomPositive)
+    return false;  // No collision
+
+  if (((s_numer > denom) == denomPositive) || ((t_numer > denom) == denomPositive))
+    return false;  // No collision
+
+  // intersected
+  if (!intersection)
+    return true;
+
+  double t = t_numer / denom;
+
+  intersection->x = s1.x + (t * vec1.x);
+  intersection->y = s1.y + (t * vec1.y);
+
+  return true;
+}
