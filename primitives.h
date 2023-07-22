@@ -12,7 +12,8 @@ using RegionID  = AnyID;
 using Depth     = short;
 
 constexpr unsigned int INVALID_INDEX = -1, INFINITY_INDEX = -2, ROOT_REGION_ID = 0,
-                       ROOT_NODE_ID = 0, INVALID_DEPTH = -1;
+                       ROOT_NODE_ID = 0;
+constexpr short INVALID_DEPTH       = -1;
 
 struct Node
 {
@@ -34,11 +35,12 @@ struct Node
 
 struct Region
 {
+  // todo: more efficient construction
   NodeID nodeID;
   VertexID high = INVALID_INDEX, low = INVALID_INDEX;
   SegmentID left = INVALID_INDEX, right = INVALID_INDEX;  // [start] Vertex of segments
 
-  Depth depth;
+  Depth depth = INVALID_DEPTH;
 
   RegionID highNeighbors[2] = {INVALID_INDEX, INVALID_INDEX},
            lowNeighbors[2]  = {INVALID_INDEX, INVALID_INDEX};

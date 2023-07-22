@@ -17,14 +17,14 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
                incrementSize =
                    static_cast<unsigned int>(compactPoints ? points.size() : points.size() - 1);
 
-  _vertices.Reserve(oldSize + points.size());
-  _segments.Reserve(oldSize + points.size());
-  _endVertices.reserve(_endVertices.size() + incrementSize);
-  _prevVertices.reserve(_endVertices.size() + incrementSize);
+  _vertices.Reserve(_vertices.Size() + incrementSize);
+  _segments.Reserve(_endVertices.Size() + incrementSize);
+  _endVertices.ResizeRaw(_endVertices.Size() + incrementSize);
+  _prevVertices.ResizeRaw(_prevVertices.Size() + incrementSize);
 
   _vertices.Pushback(points.data(), incrementSize);
 
-  static auto appendSegment = [this](VertexID from, VertexID to) {
+  auto appendSegment = [this](VertexID from, VertexID to) {
     bool downward = Higher(from, to);
 
     SegmentID segmentID = this->AppendSegment(downward);
@@ -35,8 +35,6 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 
     _endVertices[from] = to;
     _prevVertices[to]  = from;
-
-    _permutation.push_back(segmentID);
   };
 
   for (VertexID i = oldSize; i < oldSize + incrementSize - 1; ++i)
@@ -47,12 +45,18 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 void TrapezoidMapP::Build()
 {
   // generate permutation
+  _permutation.reserve(_segments.Size());
+  for (SegmentID i = 0, n = _segments.Size(); i < n; ++i)
+    _permutation.push_back(i);
+
   std::random_device rd;
   std::mt19937 g(rd());
 
   std::shuffle(_permutation.begin(), _permutation.end(), g);
 
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
+  _nodes.Reserve(_vertices.Size() * 3 + _segments.Size() * 3 + 6);
+  _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 6);
 
   // root
   Region &rootRegion = NewRegion();
@@ -71,7 +75,7 @@ void TrapezoidMapP::Build()
       n = std::log(n);
       ++i;
     }
-    config.phase = i - 1;
+    config.phase = i < 10 ? 10 : i - 1;
   }
 
   // leaves
@@ -189,14 +193,14 @@ RegionID TrapezoidMapP::QueryFrom(NodeID nodeID, VertexID vertexIDtoQuery)
 
 VertexID TrapezoidMapP::AppendVertex(const Vertex &vertex)
 {
-  assert(_vertices.Size() == _endVertices.size());
-  assert(_vertices.Size() == _prevVertices.size());
+  assert(_vertices.Size() == _endVertices.Size());
+  assert(_vertices.Size() == _prevVertices.Size());
   assert(_vertices.Size() == _vertexRegions.size());
 
   VertexID id = _vertices.Pushback(vertex);
 
-  _endVertices.push_back(INVALID_INDEX);
-  _prevVertices.push_back(INVALID_INDEX);
+  _endVertices.Pushback(INVALID_INDEX);
+  _prevVertices.Pushback(INVALID_INDEX);
   _vertexRegions.push_back(ROOT_NODE_ID);
   _lowNeighbors.emplace_back();
 
@@ -224,7 +228,7 @@ NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID
   lowRegion.lowNeighbors[0]  = highRegion.lowNeighbors[0];
   lowRegion.lowNeighbors[1]  = highRegion.lowNeighbors[1];
 
-  highRegion.lowNeighbors[0] = INVALID_INDEX;
+  highRegion.lowNeighbors[0] = GET_REAL_ID(lowRegion.nodeID);
   highRegion.lowNeighbors[1] = GET_REAL_ID(lowRegion.nodeID);
 
   // new NodeID for the original Region since it's now a leaf of the original node

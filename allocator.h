@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cassert>
+#include <cstdlib>
+#include <cstring>
 
 template <class T, class SizeType = unsigned int>
 class Allocator
@@ -32,15 +34,20 @@ public:
     size_t size = Size();
     if (size >= count)
       return;
-    _data = (T *)realloc(_data, sizeof(T) * count);
+    _data = (T *)std::realloc(_data, sizeof(T) * count);
     _top  = _data + count;
     _next = _data + size;
+  }
+  inline void ResizeRaw(size_t count)
+  {
+    Reserve(count);
+    _next = _data + count;
   }
   inline void Extend(size_t count) { Reserve(count + Size()); }
   inline void Sqeeze()
   {
     auto size = Size();
-    _data     = (T *)realloc(_data, sizeof(T) * size);
+    _data     = (T *)std::realloc(_data, sizeof(T) * size);
     _top = _next = _data + size;
   }
 
@@ -51,15 +58,15 @@ public:
   {
     if (Capability() < Size() + size)
       Reserve(size + Size());
-    memcpy(_next, begin, size * sizeof(T));
+    std::memcpy(_next, begin, size * sizeof(T));
     _next += size;
     return Size() - 1;
   }
   inline size_type Pushback(const T &element)
   {
     if (Capability() <= Size())
-      Reserve(1 + Size());
-    memcpy(_next, &element, sizeof(T));
+      Reserve(1 + Size());  // todo: improve this
+    std::memcpy(_next, &element, sizeof(T));
     ++_next;
     return Size() - 1;
   }

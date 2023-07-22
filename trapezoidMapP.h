@@ -49,7 +49,7 @@ protected:
   Allocator<Vertex> _vertices;
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
-  std::vector<VertexID> _endVertices, _prevVertices;
+  Allocator<VertexID> _endVertices, _prevVertices;
 
   // for vertex queries
   struct VertexNeighborInfo
@@ -76,7 +76,7 @@ protected:
     Node &node     = NewNode(Node::REGION);
     Region &region = _regions.New(args...);
     node.value     = _regions.Size() - 1;
-    region.nodeID  = _nodes.Size() - 1;
+    region.nodeID  = node.id;
     return region;
   }
   inline NodeID NewVertex(VertexID vertexID)
