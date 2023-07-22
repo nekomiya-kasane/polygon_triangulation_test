@@ -13,6 +13,22 @@ public:
 public:
   using size_type = SizeType;
 
+  class AllocatorIterator
+  {
+  public:
+    AllocatorIterator(T *ptr) : ptr(ptr) {}
+    AllocatorIterator operator++()
+    {
+      ++ptr;
+      return *this;
+    }
+    bool operator!=(const AllocatorIterator &other) const { return ptr != other.ptr; }
+    const T &operator*() const { return *ptr; }
+
+  private:
+    T *ptr;
+  };
+
   template <class... Args>
   T &New(Args... args)
   {
@@ -81,10 +97,8 @@ public:
   inline T &operator[](size_t index) { return *(_data + index); }
   inline const T &operator[](size_t index) const { return *(_data + index); }
 
-  inline T *begin() { return _data; }
-  inline const T *cbegin() const { return _data; }
-  inline T *end() { return _next; }
-  inline const T *cend() const { return _next; }
+  inline AllocatorIterator begin() const { return _data; }
+  inline AllocatorIterator end() const { return _next; }
 
 public:
   T *_data = nullptr, *_next = nullptr, *_top = nullptr;

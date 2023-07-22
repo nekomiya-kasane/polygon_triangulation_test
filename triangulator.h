@@ -21,7 +21,7 @@ class Triangulator : public TrapezoidMapP
 public:
   // virtual void AssignDepth() override;
 
-  Triangles Triangulate() const;
+  virtual Triangles Triangulate() const;
 
   struct
   {
@@ -34,7 +34,7 @@ public:
   } config;
 
 protected:
-  Mountains ExtractMountains() const;
+  virtual Mountains ExtractMountains() const;
 
   Triangles TriangulateMountain(const Mountain &mountain, Triangles &out) const;
 

@@ -30,3 +30,4 @@ target_include_directories(seidel_triangulator PUBLIC "./")
 #target_link_libraries(seidel_test PRIVATE seidel gtest)
 
 add_subdirectory(tests)
+add_subdirectory(viewer)
