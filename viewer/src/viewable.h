@@ -7,7 +7,7 @@
 class ViewableTriangulator : public Triangulator
 {
 public:
-  void Draw(Vec2 origin, Vec2 factor) const;
+  void Draw(Vec2 origin, Vec2 factor);
   void GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const;
 
   bool _needRedraw = true;
@@ -15,22 +15,27 @@ public:
   virtual Triangles Triangulate() const;
   virtual Mountains ExtractMountains() const;
 
-  struct
+  using VertexDrawer   = std::function<void(const Vertex &)>;
+  using SegmentDrawer  = std::function<void(const Segment &)>;
+  using RegionDrawer   = std::function<void(const Region &)>;
+  using MountainDrawer = std::function<void(const Mountain &)>;
+  using TriangleDrawer = std::function<void(const Triangle &)>;
+
+  struct A
   {
-    std::function<void(const Vertex &)> *vertexDrawer     = &defaultVertexDrawer;
-    std::function<void(const Segment &)> *segmentDrawer   = &defaultSegmentDrawer;
-    std::function<void(const Region &)> *regionDrawer     = &defaultRegionDrawer;
-    std::function<void(const Mountain &)> *mountainDrawer = &defaultMountainDrawer;
-    std::function<void(const Triangle &)> *triangleDrawer = &defaultTriangleDrawer;
+    VertexDrawer *vertexDrawer     = nullptr;
+    SegmentDrawer *segmentDrawer   = nullptr;
+    RegionDrawer *regionDrawer     = nullptr;
+    MountainDrawer *mountainDrawer = nullptr;
+    TriangleDrawer *triangleDrawer = nullptr;
   } methods;
 
-protected:
-  static std::function<void(const Vertex &)> defaultVertexDrawer;
-  static std::function<void(const Segment &)> defaultSegmentDrawer;
-  static std::function<void(const Region &)> defaultRegionDrawer;
-  static std::function<void(const Mountain &)> defaultMountainDrawer;
-  static std::function<void(const Triangle &)> defaultTriangleDrawer;
+  struct
+  {
+    int vertexRadius = 2;
+  } drawingConfig;
 
+protected:
   Mountains _mountains;
   Triangles _triangles;
 };

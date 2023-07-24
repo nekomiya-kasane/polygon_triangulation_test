@@ -1,12 +1,27 @@
 #include "viewable.h"
 
+#include "easyx.h"
+#include "graphics.h"
+
 #include <iterator>
 #include <limits>
 
-void ViewableTriangulator::Draw(Vec2 origin, Vec2 factor) const
+void ViewableTriangulator::Draw(Vec2 origin, Vec2 factor)
 {
   if (!_needRedraw)
     return;
+
+  if (!methods.vertexDrawer)
+  {
+    methods.vertexDrawer  = new VertexDrawer([this](const Vertex &vertex) {
+      circle((int)vertex.x, (int)vertex.y, (int)drawingConfig.vertexRadius);
+    });
+    methods.segmentDrawer = new SegmentDrawer([this](const Segment &segment) {
+      const Vertex &highVertex = _vertices[segment.highVertex];
+      const Vertex &lowVertex  = _vertices[segment.lowVertex];
+      line((int)highVertex.x, (int)highVertex.y, (int)lowVertex.x, (int)lowVertex.y);
+    });
+  }
 
   for (const auto &vertex : _vertices)
     if (methods.vertexDrawer)
@@ -31,11 +46,11 @@ void ViewableTriangulator::Draw(Vec2 origin, Vec2 factor) const
 
 void ViewableTriangulator::GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const
 {
-  constexpr double big = std::numeric_limits<double>::max();
-  leftTop.x            = big;
-  leftTop.y            = -big;
-  rightBottom.x        = -big;
-  rightBottom.y        = big;
+  const double big = HUGE_VAL;
+  leftTop.x        = big;
+  leftTop.y        = -big;
+  rightBottom.x    = -big;
+  rightBottom.y    = big;
 
   for (const auto &vertex : _vertices)
   {
