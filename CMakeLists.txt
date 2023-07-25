@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(SeidelSources
 	"vec2.cpp"
+	"primitives.cpp"
 	"trapezoidMapP.cpp"
 	"triangulator.cpp"
 )
@@ -18,16 +19,13 @@ set(SeidelHeaders
 	"trapezoidMapP.h"
 	"triangulator.h"
 
-	"allocator.natvis"
+	"views.natvis"
 )
 
 add_library(seidel_triangulator STATIC)
 target_sources(seidel_triangulator PRIVATE ${SeidelSources} PUBLIC ${SeidelHeaders})
 target_include_directories(seidel_triangulator PUBLIC "./")
-
-#file(GLOB_RECURSE SeidelTestSources "Tests/*.h" "Tests/*.cpp")
-#add_executable(seidel_test ${SeidelTestSources})
-#target_link_libraries(seidel_test PRIVATE seidel gtest)
+target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_USE_SIGNED_INDEX)
 
 add_subdirectory(tests)
 add_subdirectory(viewer)

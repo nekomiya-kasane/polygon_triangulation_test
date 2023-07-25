@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="Allocator&lt;*&gt;">
+    <DisplayString>size = {_next - _data}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_next - _data</Item>
+      <Item Name="[capacity]">(_top - _data)</Item>
+      <ArrayItems>
+        <Size>_next - _data</Size>
+        <ValuePointer>_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="Vec2">
+    <DisplayString>({x}, {y})</DisplayString>
+  </Type>
+  <Type Name="Region">
+    <DisplayString>Node({nodeID}), Vert({high}, {low}), Edge({left}, {right}), Low({lowNeighbors[0]}, {lowNeighbors[1]}), High({highNeighbors[0]}, {highNeighbors[1]}), Depth({depth})</DisplayString>
+    <Expand>
+        <Synthetic Name="[Info]">
+          <DisplayString>Node: {nodeID}, Depth: {depth}</DisplayString>
+        </Synthetic>
+        <Synthetic Name="[Vert]">
+          <DisplayString>H: {high}, L: {low}</DisplayString>
+        </Synthetic>
+        <Synthetic Name="[Edge]">
+          <DisplayString>L: {left}, R: {right}</DisplayString>
+        </Synthetic>
+        <Synthetic Name="[LowAdj]">
+          <DisplayString>L: {lowNeighbors[0]}, R: {lowNeighbors[1]}</DisplayString>
+        </Synthetic>
+        <Synthetic Name="[HighAdj]">
+          <DisplayString>L: {highNeighbors[0]}, R: {highNeighbors[1]}</DisplayString>
+        </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="Node">
+    <DisplayString Condition="type==1">({id}, VERTEX, {value}, [{left}, {right}])</DisplayString>
+    <DisplayString Condition="type==2">({id}, SEGMENT, {value}, [{left}, {right}])</DisplayString>
+    <DisplayString Condition="type==3">({id}, REGION, {value}, [{left}, {right}])</DisplayString>
+    <DisplayString>({id}, UNKNOWN, {value}, [{left}, {right}])</DisplayString>
+  </Type>
+  <Type Name="Segment">
+    <DisplayString>(({highVertex}, {lowVertex}, {downward}), ({downward ? highVertex : lowVertex}, {downward ? lowVertex : highVertex}))</DisplayString>
+    <Expand>
+        <Item Name="[from]">downward ? highVertex : lowVertex</Item>
+        <Item Name="[to]">downward ? lowVertex : highVertex</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

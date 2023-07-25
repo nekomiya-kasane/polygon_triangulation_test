@@ -54,6 +54,8 @@ protected:
   // for vertex queries
   struct VertexNeighborInfo
   {
+    // We define that, if there's only one region below, then it's stored in `left`; if there're 2 regions
+    // below, they're stored in `left` and `right`
     RegionID left = INVALID_INDEX, mid = INVALID_INDEX, right = INVALID_INDEX;
 
     inline int Size() const { return Valid(left) + Valid(mid) + Valid(right); }
@@ -62,7 +64,8 @@ protected:
   std::vector<NodeID> _vertexRegions;  // invalid for already added
 
 protected:
-  inline static bool Valid(NodeID index) { return index != INVALID_INDEX; }
+  inline static bool Valid(AnyID index) { return index != INVALID_INDEX; }
+  inline static bool Infinite(AnyID index) { return index == INFINITY_INDEX; }
   inline Node &NewNode(Node::Type type)
   {
     Node &node = _nodes.New();
@@ -111,12 +114,8 @@ protected:
 
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
   int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
-  bool Higher /* Lefter */ (VertexID refVertexID,
-                            VertexID highVertexID,
-                            VertexID lowVertexID) const;
-  int Higher /* Lefter */ (const Vertex &refVertex,
-                           const Vertex &highVertex,
-                           const Vertex &lowVertex) const;
+  bool Higher /* Lefter */ (VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const;
+  int Higher /* Lefter */ (const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const;
   bool Intersected(VertexID segment1_Start,
                    VertexID segment1_End,
                    VertexID segment2_Start,

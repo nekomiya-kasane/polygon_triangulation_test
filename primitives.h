@@ -4,25 +4,28 @@
 
 #include "vec2.h"
 
-using AnyID     = unsigned int;
+#ifdef SEIDEL_USE_SIGNED_INDEX
+using AnyID = int;
+#else
+using AnyID = unsigned int;
+#endif
 using NodeID    = AnyID;
 using VertexID  = AnyID;
 using SegmentID = AnyID;
 using RegionID  = AnyID;
 using Depth     = short;
 
-constexpr unsigned int INVALID_INDEX = -1, INFINITY_INDEX = -2, ROOT_REGION_ID = 0,
-                       ROOT_NODE_ID = 0;
-constexpr short INVALID_DEPTH       = -1;
+constexpr AnyID INVALID_INDEX = -1, INFINITY_INDEX = -2, ROOT_REGION_ID = 0, ROOT_NODE_ID = 0;
+constexpr Depth INVALID_DEPTH = -1;
 
 struct Node
 {
   enum Type
   {
-    NONE,
-    VERTEX,
-    SEGMENT,
-    REGION
+    NONE    = 0,
+    VERTEX  = 1,
+    SEGMENT = 2,
+    REGION  = 3
   };
 
   NodeID id;
@@ -35,15 +38,16 @@ struct Node
 
 struct Region
 {
+  Region();
+
   // todo: more efficient construction
   NodeID nodeID;
-  VertexID high = INVALID_INDEX, low = INVALID_INDEX;
-  SegmentID left = INVALID_INDEX, right = INVALID_INDEX;  // [start] Vertex of segments
+  VertexID high, low;
+  SegmentID left, right;  // [start] Vertex of segments
 
-  Depth depth = INVALID_DEPTH;
+  Depth depth;
 
-  RegionID highNeighbors[2] = {INVALID_INDEX, INVALID_INDEX},
-           lowNeighbors[2]  = {INVALID_INDEX, INVALID_INDEX};
+  RegionID highNeighbors[2], lowNeighbors[2];
 };
 
 struct Segment

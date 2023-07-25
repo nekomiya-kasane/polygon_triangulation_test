@@ -6,14 +6,12 @@ Mountains Triangulator::ExtractMountains() const
 {
   // todo: simplify the code
 
-  std::vector<char> leftSegmentVisited(_regions.Size(), false),
-      rightSegmentVisited(_regions.Size(), false);
+  std::vector<char> leftSegmentVisited(_regions.Size(), false), rightSegmentVisited(_regions.Size(), false);
 
   Mountains mountains;
 
   const auto ProcedureLeft = [this, &leftSegmentVisited, &rightSegmentVisited, &mountains](
-                                 const Region &region, SegmentID leftSegmentID,
-                                 const Segment &leftSegment) {
+                                 const Region &region, SegmentID leftSegmentID, const Segment &leftSegment) {
     VertexID baseVertexID = leftSegment.highVertex;
 
     Mountain mountain;  // first and last vertex be the endpoints of the base egde
@@ -229,7 +227,7 @@ Mountains Triangulator::ExtractMountains() const
 
 Triangles Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out) const
 {
-  if (config.earClippingInsteadOfChimneyClipping)
+  if (config.mountainResolutionMethod == Config::EAR_CLIPPING)
     return EarClipping(mountain, out);
   return ChimneyClipping(mountain, out);
 }
@@ -283,8 +281,7 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
     cur = current.back();
 
     VertexID prev = prevs[cur], next = nexts[cur];
-    out.push_back(
-        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]});
+    out.push_back(Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]});
 
     prevs[next] = prev;
     nexts[prev] = next;
@@ -327,8 +324,7 @@ Triangles Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out
       while (IsConvex(prevThree))
       {
         if (!IsZeroSize(prevThree))
-          out.push_back(
-              Triangle{_vertices[prevThree[2]], _vertices[prevThree[1]], _vertices[prevThree[0]]});
+          out.push_back(Triangle{_vertices[prevThree[2]], _vertices[prevThree[1]], _vertices[prevThree[0]]});
         prevThree[1] = prevThree[0];
         stack.pop_back();
         if (stack.size() < 2)
@@ -343,18 +339,18 @@ Triangles Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out
 
 bool Triangulator::IsZeroSize(VertexID vertices[3]) const
 {
-  if (config.keepZeroSizeTriangle)
+  if (config.zeroSizeTrianglePolicy == Config::KEEP_ALL)  // todo: handle other configurations
     return false;
 
-  double cross = (_vertices[vertices[2]] - _vertices[vertices[1]]) ^
-                 (_vertices[vertices[1]] - _vertices[vertices[0]]);
+  double cross =
+      (_vertices[vertices[2]] - _vertices[vertices[1]]) ^ (_vertices[vertices[1]] - _vertices[vertices[0]]);
   return std::abs(cross) < config.tolerance;
 }
 
 bool Triangulator::IsConvex(VertexID vertices[3]) const
 {
-  double cross = (_vertices[vertices[2]] - _vertices[vertices[1]]) ^
-                 (_vertices[vertices[1]] - _vertices[vertices[0]]);
+  double cross =
+      (_vertices[vertices[2]] - _vertices[vertices[1]]) ^ (_vertices[vertices[1]] - _vertices[vertices[0]]);
 
   return config.useNeighborCacheToTransverse /* will be clockwise */ ? cross <= 0.
                                                                      : cross >= 0.;  // todo: or use
