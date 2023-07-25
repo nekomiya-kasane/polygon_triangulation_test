@@ -40,7 +40,7 @@ protected:
 
   // for merging
   RegionID _nextRegion = INVALID_INDEX, _tmpRegionToMerge = INVALID_INDEX;
-  int _mergeType = 0;
+  int _mergeType = 0; /* -1: merge left region, 0: no region to merge, 1: merge right region */
 
 protected:
   Allocator<Node> _nodes;

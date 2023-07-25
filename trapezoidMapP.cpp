@@ -49,14 +49,16 @@ void TrapezoidMapP::Build()
   for (SegmentID i = 0, n = _segments.Size(); i < n; ++i)
     _permutation.push_back(i);
 
-  std::random_device rd;
-  std::mt19937 g(rd());
+  // std::random_device rd;
+  // std::mt19937 g(rd());
+  std::mt19937 g(1);
 
   std::shuffle(_permutation.begin(), _permutation.end(), g);
 
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
   _nodes.Reserve(_vertices.Size() * 3 + _segments.Size() * 3 + 6);
   _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 6);
+  _lowNeighbors.resize(_vertices.Size());
 
   // root
   Region &rootRegion = NewRegion();
@@ -228,12 +230,16 @@ NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID
   lowRegion.lowNeighbors[0]  = highRegion.lowNeighbors[0];
   lowRegion.lowNeighbors[1]  = highRegion.lowNeighbors[1];
 
+  highRegion.low             = vertexID;
   highRegion.lowNeighbors[0] = GET_REAL_ID(lowRegion.nodeID);
   highRegion.lowNeighbors[1] = GET_REAL_ID(lowRegion.nodeID);
 
   // new NodeID for the original Region since it's now a leaf of the original node
   Node &newNodeForHighRegion = NewNode(Node::REGION);
   highRegion.nodeID          = newNodeForHighRegion.id;
+
+  // maintain neighbors
+  _lowNeighbors[vertexID].left = _regions.GetIndex(&lowRegion);
 
   return {highRegion.nodeID, lowRegion.nodeID};
 }
@@ -275,23 +281,42 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
   // update high region
   switch (type)
   {
+    //   --*----------------------|
+    //     |\                     |
+    //     | \       Low          |
+    //     |H \ <--- added        |
     case -2:
     {
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
       highRegion.highNeighbors[0] = highRegion.highNeighbors[1] = INVALID_INDEX;
+      lowRegion.high                                            = highRegion.high;
       break;
     }
+    //   |--------*---------------|
+    //   |         \     Low      |
+    //   | High     \             |
+    //   |           \ <--- added |
     case 0:
     {
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
       highRegion.highNeighbors[1]                             = highRegion.highNeighbors[0];
+      lowRegion.high                                          = highRegion.high;
       break;
     }
+    //   |------------------------*--
+    //   |                       /|
+    //   |      High            / |
+    //   |          added ---> / L|
     case 2:
     {
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = INVALID_INDEX;
+      lowRegion.high                                          = highRegion.high;
       break;
     }
+    //   |--------\---*------------|
+    //   |         \               |
+    //   |   High   \     Low      |
+    //   |           \ <--- added  |
     case -1:
     {
       lowRegion.highNeighbors[0]  = highRegion.highNeighbors[0];
@@ -299,6 +324,10 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       highRegion.highNeighbors[1] = highRegion.highNeighbors[0];
       break;
     }
+    //   |-----------*-----/-------|
+    //   |    High        /        |
+    //   |               /   Low   |
+    //   |   added ---> /          |
     case 1:
     {
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
@@ -316,29 +345,58 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
                                RegionID lowRegionID,
                                SegmentID segmentID)
 {
+  assert(Valid(segmentID) && Valid(originalRegionID) && Valid(highRegionID) && Valid(lowRegionID));
+
   // merging already completed before calling this.
   Region &original = _regions[originalRegionID], &high = _regions[highRegionID],
          &low       = _regions[lowRegionID];
   Segment &segment  = _segments[segmentID];
-  VertexID leftLow  = _segments[original.left].lowVertex,
-           rightLow = _segments[original.right].lowVertex;
+  VertexID leftLow  = Valid(original.left) ? _segments[original.left].lowVertex : INVALID_INDEX,
+           rightLow = Valid(original.right) ? _segments[original.right].lowVertex : INVALID_INDEX;
 
+  // the last region
   if (original.low == segment.lowVertex)
   {
-    _nextRegion = _tmpRegionToMerge = INVALID_INDEX;
-    _mergeType                      = 0;
     low.lowNeighbors[0] = low.lowNeighbors[1] = original.lowNeighbors[1];
 
+    //  \    /            |
+    //   \  / <--- added  |
+    //    \/              |
+    //-----*--------------|
+    //                    |
     if (leftLow == segment.lowVertex)
     {
       high.lowNeighbors[0] = high.lowNeighbors[1] = INVALID_INDEX;
+      high.low = low.low = leftLow;
     }
-    if (rightLow == segment.lowVertex)
+    //  |           \    /
+    //  | added ---> \  /
+    //  |             \/
+    //  |-------------*---
+    //  |
+    else if (rightLow == segment.lowVertex)
     {
       low.lowNeighbors[0] = low.lowNeighbors[1] = INVALID_INDEX;
+      high.low = low.low = rightLow;
     }
+    //  |           \     |      |           \     |
+    //  | added ---> \    |      | added ---> \    |
+    //  |             \   |  or  |             \   |
+    //  |-------------*---|      |-------------*---|
+    //  |            /    |      |                 |
+    else
+    {
+      high.lowNeighbors[0] = high.lowNeighbors[1] = _lowNeighbors[high.low].left;
+      low.lowNeighbors[0] = low.lowNeighbors[1] = _lowNeighbors[high.low].right;
+      high.low = low.low = original.low;
+    }
+
+    // no next region anymore
+    _nextRegion = _tmpRegionToMerge = INVALID_INDEX;
+    _mergeType                      = 0;
     return 0;
   }
+  // not the last region
   else
   {
     int res = Higher(original.low, segment.highVertex, segment.lowVertex) ? 1 : -1;

@@ -81,7 +81,7 @@ public:
   inline size_type Pushback(const T &element)
   {
     if (Capability() <= Size())
-      Reserve(1 + Size());  // todo: improve this
+      Reserve(_expansion + Size());  // todo: improve this
     std::memcpy(_next, &element, sizeof(T));
     ++_next;
     return Size() - 1;
@@ -90,7 +90,7 @@ public:
   inline size_type GetIndex(const T *const elementPtr) const
   {
     assert((elementPtr < _top) && (elementPtr >= _data));
-    assert(((char *)elementPtr - (char *)_data) % sizeof(T));
+    assert(((char *)elementPtr - (char *)_data) % sizeof(T) == 0);  // integrity
     return static_cast<size_type>(elementPtr - _data);
   }
 
@@ -102,4 +102,5 @@ public:
 
 public:
   T *_data = nullptr, *_next = nullptr, *_top = nullptr;
+  unsigned int _expansion = 10;
 };
