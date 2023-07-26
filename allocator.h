@@ -38,7 +38,7 @@ public:
   }
 
   template <class... Args>
-  unsigned int New2(Args... args)
+  size_type New2(Args... args)
   {
     new (_next) T(args);
     _next++;

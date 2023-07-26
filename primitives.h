@@ -40,10 +40,9 @@ struct Region
 {
   Region();
 
-  // todo: more efficient construction
   NodeID nodeID;
   VertexID high, low;
-  SegmentID left, right;  // [start] Vertex of segments
+  SegmentID left, right;
 
   Depth depth;
 
@@ -56,10 +55,10 @@ struct Segment
   /* don't move this line */ VertexID highVertex, lowVertex;
   /* don't move this line */ bool downward;
 
-  const VertexID &from() const { return downward ? highVertex : lowVertex; }
-  const VertexID &to() const { return downward ? lowVertex : highVertex; }
-  VertexID &from() { return downward ? highVertex : lowVertex; }
-  VertexID &to() { return downward ? lowVertex : highVertex; }
+  inline const VertexID &from() const { return downward ? highVertex : lowVertex; }
+  inline const VertexID &to() const { return downward ? lowVertex : highVertex; }
+  inline VertexID &from() { return downward ? highVertex : lowVertex; }
+  inline VertexID &to() { return downward ? lowVertex : highVertex; }
 };
 
 using Vertex   = Vec2;
