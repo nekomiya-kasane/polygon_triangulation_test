@@ -156,8 +156,7 @@ void ViewableTriangulator::GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) cons
 
 Triangles ViewableTriangulator::Triangulate() const
 {
-  Triangles res                       = Triangulator::Triangulate();
-  const_cast<Triangles &>(_triangles) = res;
+  const_cast<Triangles &>(_triangles) = Triangulator::Triangulate();  // hack it
   return _triangles;
 }
 

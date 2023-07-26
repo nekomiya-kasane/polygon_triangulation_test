@@ -20,7 +20,10 @@ int main()
   int i      = 1;
   auto start = std::chrono::steady_clock::now(), end = std::chrono::steady_clock::now();
 
-  Vec2Set points = {{-1, 1}, {0, 2}, {1, 0}, {0, -2}};
+  // Vec2Set points = {{-1, 1}, {0, 2}, {1, 0}, {0, -2}};
+  Vec2Set points = {{53, 131}, {122, 238}, {204, 167}, {239, 269}, {93, 353}};
+  //,
+  //                {247, 328}, {326, 369}, {296, 215}, {222, 46},  {157, 119}};
 
   ViewableTriangulator tri;
   tri.config.useGivenSeed = true;

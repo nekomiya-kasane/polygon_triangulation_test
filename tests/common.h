@@ -11,3 +11,14 @@
   EXPECT_EQ(INFO.left, LEFT);                       \
   EXPECT_EQ(INFO.mid, MID);                         \
   EXPECT_EQ(INFO.right, RIGHT);
+
+#define EXPECT_REGION(REGION, NODEID, VH, VL, SL, SR, LN0, LN1, HN0, HN1) \
+  EXPECT_EQ(REGION.nodeID, NODEID);                                       \
+  EXPECT_EQ(REGION.high, VH);                                             \
+  EXPECT_EQ(REGION.low, VL);                                              \
+  EXPECT_EQ(REGION.left, SL);                                             \
+  EXPECT_EQ(REGION.right, SR);                                            \
+  EXPECT_EQ(REGION.lowNeighbors[0], LN0);                                 \
+  EXPECT_EQ(REGION.lowNeighbors[1], LN1);                                 \
+  EXPECT_EQ(REGION.highNeighbors[0], HN0);                                \
+  EXPECT_EQ(REGION.highNeighbors[1], HN1);

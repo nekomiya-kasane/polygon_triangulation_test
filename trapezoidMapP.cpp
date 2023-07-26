@@ -275,22 +275,24 @@ void TrapezoidMapP::SplitRegionBySegment(RegionID regionID, SegmentID segmentID,
   // two vertices are already inserted, hence we need not to consider other occasions - the vertices
   // must be the high & low vertex of the trapezoid.
 
-  Region &highRegion = _regions[_mergeType == -1 ? _tmpRegionToMerge : regionID];
-  Region &lowRegion  = _mergeType == 1 ? _regions[_tmpRegionToMerge] : NewRegion();
-
-  RegionID lowRegionID = GET_REAL_ID(lowRegion.nodeID);
+  Region &originalRegion = _regions[regionID];
+  RegionID highRegionID  = _mergeType == -1 ? _tmpRegionToMerge : regionID;
+  Region &highRegion     = _regions[highRegionID];
+  Region &lowRegion =
+      _mergeType != 0 ? _regions[_mergeType == -1 ? regionID : _tmpRegionToMerge] : NewRegion();
+  RegionID lowRegionID = _regions.GetIndex(&lowRegion);
 
   // update neighbors
-  UpdateAbove(highRegion, highRegion, lowRegion, segmentID, type);
-  type = UpdateBelow(regionID, regionID, lowRegionID, segmentID);
+  UpdateAbove(originalRegion, highRegion, lowRegion, segmentID, type);
+  type = UpdateBelow(regionID, highRegionID, lowRegionID, segmentID);
 
   // assign original NodeID to the overridden node
-  Node &originalNode = _nodes[highRegion.nodeID];
+  Node &originalNode = _nodes[originalRegion.nodeID];
   originalNode.type  = Node::SEGMENT;
   originalNode.value = segmentID;
 
-  Node &newNodeForHighRegion = NewNode(Node::Type::REGION, regionID);
-  highRegion.nodeID          = newNodeForHighRegion.id;  // renumber high region
+  Node &newNodeForOriginalRegion = NewNode(Node::Type::REGION, regionID);
+  originalRegion.nodeID          = newNodeForOriginalRegion.id;  // renumber high region
 
   originalNode.left  = highRegion.nodeID;
   originalNode.right = lowRegion.nodeID;
@@ -319,9 +321,9 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       highNeiRegion.lowNeighbors[1] = lowRegionID;
 
       // update this region's neighbors
-      lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
+      lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = originalRegion.highNeighbors[1];
       highRegion.highNeighbors[0] = highRegion.highNeighbors[1] = INVALID_INDEX;
-      lowRegion.high                                            = highRegion.high;
+      lowRegion.high                                            = originalRegion.high;
 
       // update _lowNeighbors
       assert(Valid(highVertLowNei.right));
@@ -362,7 +364,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       // update this region's neighbors
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = originalRegion.highNeighbors[1];
       highRegion.highNeighbors[1]                             = originalRegion.highNeighbors[0];
-      lowRegion.high                                          = highRegion.high;
+      lowRegion.high                                          = originalRegion.high;
 
       // update _lowNeighbors
       assert(!Valid(highVertLowNei.mid) && (highVertLowNei.left == _regions.GetIndex(&highRegion)));
@@ -380,7 +382,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       // already INVALID_INDEX by default ->
       //      lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = INVALID_INDEX;
       assert(!Valid(lowRegion.highNeighbors[0]) && !Valid(lowRegion.highNeighbors[1]));
-      lowRegion.high = highRegion.high;
+      lowRegion.high = originalRegion.high;
 
       // update _lowNeighbors
       assert(highVertLowNei.left == _regions.GetIndex(&highRegion));
@@ -399,8 +401,8 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       highNeiRegion.lowNeighbors[0] = highNeiRegion.lowNeighbors[1] = lowRegionID;
 
       // update this region's neighbors
-      lowRegion.highNeighbors[0] = highRegion.highNeighbors[0];
-      lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
+      lowRegion.highNeighbors[0] = originalRegion.highNeighbors[0];
+      lowRegion.highNeighbors[1] = originalRegion.highNeighbors[1];
       // wrong!! -> highRegion.highNeighbors[1] = highRegion.highNeighbors[0];
 
       // update _lowNeighbors
@@ -421,7 +423,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
   }
 
   // update left and right segment
-  lowRegion.right = highRegion.right;
+  lowRegion.right = originalRegion.right;
   lowRegion.left = highRegion.right = segmentID;
 
   // We modify high neighbors and segments in this method, but don't modify low neighbors and vertices
@@ -537,8 +539,8 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
       _tmpRegionToMerge = highRegionID;
       _mergeType        = -1;  // merge high subregion
 
-      low.lowNeighbors[0]  = high.lowNeighbors[0];
-      low.lowNeighbors[1]  = high.lowNeighbors[1];
+      low.lowNeighbors[0]  = original.lowNeighbors[0];
+      low.lowNeighbors[1]  = original.lowNeighbors[1];
       high.lowNeighbors[1] = high.lowNeighbors[0];
     }
     return res;
