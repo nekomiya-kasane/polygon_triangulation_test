@@ -47,4 +47,8 @@
         <Item Name="[to]">downward ? lowVertex : highVertex</Item>
     </Expand>
   </Type>
+  <Type Name="TrapezoidMapP::VertexNeighborInfo">
+    <DisplayString>({left}, {mid}, {right})</DisplayString>
+    <Expand></Expand>
+  </Type>
 </AutoVisualizer>

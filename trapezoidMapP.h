@@ -20,11 +20,11 @@ public:
   {
     double tolerance       = 1e-16;
     bool checkIntersection = false;
-    unsigned short phase   = 0; /* phase to update region cache of vertices */
+    unsigned short phase   = 0; /* phase to update `_vertexRegions` */
   } config;
 
 protected:
-  // AddVertex: true - already added, false - newly added
+  /* AddVertex : true - already added, false - newly added */
   bool AddVertex(VertexID vertexID, NodeID startNodeID = ROOT_NODE_ID);
   bool AddSegment(SegmentID segmentID);
 
@@ -51,21 +51,25 @@ protected:
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
   Allocator<VertexID> _endVertices, _prevVertices;
 
-  // for vertex queries
+  /// for vertex queries
   struct VertexNeighborInfo
   {
-    // We define that, if there's only one region below, then it's stored in `left`; if there're 2 regions
-    // below, they're stored in `left` and `right`
+    /* We define that, if there's only one region below, then it's stored in `left`; if there're 2 regions
+     * below, they're stored in `left` and `right` */
     RegionID left = INVALID_INDEX, mid = INVALID_INDEX, right = INVALID_INDEX;
 
     inline int Size() const { return Valid(left) + Valid(mid) + Valid(right); }
   };
+  /* regions right below a vertex, 3 at most for polygons */
   std::vector<VertexNeighborInfo> _lowNeighbors;
-  std::vector<NodeID> _vertexRegions;  // invalid for already added
+  /* Initialized to the root node. INVALID_INDEX for already added vertices. */
+  std::vector<NodeID> _vertexRegions;
 
 protected:
   inline static bool Valid(AnyID index) { return index != INVALID_INDEX; }
   inline static bool Infinite(AnyID index) { return index == INFINITY_INDEX; }
+
+  // memory allocating
   inline Node &NewNode(Node::Type type)
   {
     Node &node = _nodes.New();
@@ -96,7 +100,8 @@ protected:
     return node.id;
   }
 
-  RegionID GetFirstIntersectedRegion(VertexID highVertex, VertexID refVertex, int *type);
+  // neighbors maintaining
+  RegionID GetFirstIntersectedRegion(VertexID highVertex, VertexID refVertex, int *type) const;
 
   SegmentID ResolveIntersection(RegionID curRegionID,
                                 SegmentID newSegmentID,
@@ -119,14 +124,15 @@ protected:
                   RegionID lowRegionID,
                   SegmentID segmentID);
 
+  // geometric calculation
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
   int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
   bool Higher /* Lefter */ (VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const;
   int Higher /* Lefter */ (const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const;
-  bool Intersected(VertexID segment1_Start,
-                   VertexID segment1_End,
-                   VertexID segment2_Start,
-                   VertexID segment2_End,
-                   Vertex *const intersection) const;
+  int Intersected(VertexID segment1_Start,
+                  VertexID segment1_End,
+                  VertexID segment2_Start,
+                  VertexID segment2_End,
+                  Vertex *const intersection) const;
   // bool PointOnSegment();  // todo: "T" type coincidence
 };
