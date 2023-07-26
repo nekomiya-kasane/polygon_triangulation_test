@@ -1,8 +1,11 @@
 #pragma once
 
-#include <cassert>
-#include <cstdlib>
-#include <cstring>
+#ifndef SEIDEL_ALLOCATOR_H
+#  define SEIDEL_ALLOCATOR_H
+
+#  include <cassert>
+#  include <cstdlib>
+#  include <cstring>
 
 template <class T, class SizeType = unsigned int>
 class Allocator
@@ -104,3 +107,5 @@ public:
   T *_data = nullptr, *_next = nullptr, *_top = nullptr;
   unsigned int _expansion = 10;
 };
+
+#endif SEIDEL_ALLOCATOR_H

@@ -1,9 +1,12 @@
 #pragma once
 
-#include "trapezoidMapP.h"
+#ifndef SEIDEL_TRIANGULATOR_H
+#  define SEIDEL_TRIANGULATOR_H
 
-#include <list>  // todo: memory issue
-#include <map>
+#  include "trapezoidMapP.h"
+
+#  include <list>  // todo: memory issue
+#  include <map>
 
 struct Triangle
 {
@@ -61,7 +64,7 @@ public:
     CoarselyNearVerticesPolicy coarselyNearVerticesPolicy = DO_NOTHING;  // todo: implement this
     ZeroSizeTrianglePolicy zeroSizeTrianglePolicy         = KEEP_ALL;
     EarClippingPolicy earClippingPolicy                   = CONVENTIONAL;
-  } config;
+  } configTri;
 
 protected:
   virtual Mountains ExtractMountains() const;
@@ -74,3 +77,5 @@ protected:
   bool IsZeroSize(VertexID vertices[3]) const;
   bool IsConvex(VertexID vertices[3]) const;
 };
+
+#endif SEIDEL_TRIANGULATOR_H

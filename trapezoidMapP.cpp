@@ -48,11 +48,18 @@ void TrapezoidMapP::Build()
   for (SegmentID i = 0, n = _segments.Size(); i < n; ++i)
     _permutation.push_back(i);
 
-  // std::random_device rd;
-  // std::mt19937 g(rd());
-  std::mt19937 g(1);
-
-  std::shuffle(_permutation.begin(), _permutation.end(), g);
+  std::random_device rd;
+  if (config.useGivenSeed)
+  {
+    std::mt19937 g(config.seed);
+    std::shuffle(_permutation.begin(), _permutation.end(), g);
+  }
+  else
+  {
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(_permutation.begin(), _permutation.end(), g);
+  }
 
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
   _nodes.Reserve(_vertices.Size() * 3 + _segments.Size() * 3 + 6);

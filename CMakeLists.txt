@@ -3,6 +3,8 @@ project(SeidelAlgorithm)
 
 set(CMAKE_CXX_STANDARD 20)
 
+option(ENABLE_INTERNAL_TESTS "" ON)
+
 # file(GLOB_RECURSE SeidelSources "./*.cpp")
 # file(GLOB_RECURSE SeidelHeaders "./*.h")
 
@@ -26,6 +28,9 @@ add_library(seidel_triangulator STATIC)
 target_sources(seidel_triangulator PRIVATE ${SeidelSources} PUBLIC ${SeidelHeaders})
 target_include_directories(seidel_triangulator PUBLIC "./")
 target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_USE_SIGNED_INDEX)
+if (ENABLE_INTERNAL_TESTS)
+	target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_INTERNAL_TEST)
+	add_subdirectory(tests)
+endif()
 
-add_subdirectory(tests)
 add_subdirectory(viewer)

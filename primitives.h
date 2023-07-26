@@ -1,14 +1,17 @@
 #pragma once
 
-#include <utility>
+#ifndef SEIDEL_PRIMITIVES_H
+#  define SEIDEL_PRIMITIVES_H
 
-#include "vec2.h"
+#  include <utility>
 
-#ifdef SEIDEL_USE_SIGNED_INDEX
+#  include "vec2.h"
+
+#  ifdef SEIDEL_USE_SIGNED_INDEX
 using AnyID = int;
-#else
+#  else
 using AnyID = unsigned int;
-#endif
+#  endif
 using NodeID    = AnyID;
 using VertexID  = AnyID;
 using SegmentID = AnyID;
@@ -63,3 +66,5 @@ struct Segment
 
 using Vertex   = Vec2;
 using NodePair = std::pair<NodeID, NodeID>;
+
+#endif

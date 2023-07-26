@@ -6,7 +6,7 @@ Mountains Triangulator::ExtractMountains() const
 {
   // todo: simplify the code
 
-  std::vector<char> leftSegmentVisited(_regions.Size(), false), rightSegmentVisited(_regions.Size(), false);
+  std::vector<bool> leftSegmentVisited(_regions.Size(), false), rightSegmentVisited(_regions.Size(), false);
 
   Mountains mountains;
 
@@ -16,7 +16,7 @@ Mountains Triangulator::ExtractMountains() const
 
     Mountain mountain;  // first and last vertex be the endpoints of the base egde
     // jump to the top then go down
-    if (config.useNeighborCacheToTransverse)
+    if (configTri.useNeighborCacheToTransverse)
     {
       mountain.push_back(baseVertexID);
 
@@ -48,6 +48,22 @@ Mountains Triangulator::ExtractMountains() const
       mountain.push_back(leftSegment.lowVertex);
 
       // go down to the lowest region with the same left segment
+      /* for this (the lowest region) region, the low vertex lies on the base segment while the top vertex
+       * lies on the opposite segment (we have filter out other occasions before entering this block), hence a
+       * diagonal will be drawn.
+       *
+       * ---@n--x
+       *  Å´ |     x
+       *    |-------@3            @ mountain vertices
+       *  Å´ |      /
+       *    |-----@2
+       *  Å´ |..../.\
+       *    |...+...\
+       *  Å´ |../.....\  <-- go down until this region
+       *    |.+.......\
+       *    |/.........\
+       *    @1----------\
+       * */
       while (_segments[curRegionPtr->left].highVertex == baseVertexID)
       {
         lastRegionPtr = curRegionPtr;
@@ -55,14 +71,14 @@ Mountains Triangulator::ExtractMountains() const
         leftSegmentVisited[_regions.GetIndex(lastRegionPtr)] = true;
 
         RegionID nextRegionID = curRegionPtr->lowNeighbors[0];
-        assert(Valid(nextRegionID));
-        if (!Valid(nextRegionID))
+        if (!Valid(nextRegionID))  // when the lowest region degenerates into a triangle
           break;
 
         curRegionPtr = &_regions[nextRegionID];
       }
 
       // go up to transverse the mountain
+      /* the generated mountain will have counterclockwise vertices */
       curRegionPtr = lastRegionPtr;
       while (curRegionPtr->high != baseVertexID)
       {
@@ -95,7 +111,7 @@ Mountains Triangulator::ExtractMountains() const
 
     Mountain mountain;
     // jump to the top then go down
-    if (config.useNeighborCacheToTransverse)
+    if (configTri.useNeighborCacheToTransverse)
     {
       mountain.push_back(baseVertexID);
 
@@ -177,9 +193,12 @@ Mountains Triangulator::ExtractMountains() const
     if (leftSegmentVisited[regionID] && rightSegmentVisited[regionID])  // bad
       continue;
 
+    /* since the trapezoid is closed by the boundary, its left and right leg won't be invalid or infinite, we
+     * can take the contents safely. */
     const SegmentID leftSegmentID = region.left, rightSegmentID = region.right;
     const Segment &leftSegment = _segments[leftSegmentID], rightSegment = _segments[rightSegmentID];
 
+    // skip not diagonalized trapezoid
     if ((region.high == leftSegment.highVertex && region.low == leftSegment.lowVertex) ||
         (region.high == rightSegment.highVertex && region.low == rightSegment.lowVertex))
       continue;
@@ -227,7 +246,7 @@ Mountains Triangulator::ExtractMountains() const
 
 Triangles Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out) const
 {
-  if (config.mountainResolutionMethod == Config::EAR_CLIPPING)
+  if (configTri.mountainResolutionMethod == Config::EAR_CLIPPING)
     return EarClipping(mountain, out);
   return ChimneyClipping(mountain, out);
 }
@@ -254,13 +273,22 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
   //       if the neighboring vertex is not an endpoint of the base, and was made convex by cutting
   //       off the ear, then add this neighbor to the list
 
+  if (mountain.size() == 3)
+  // degenerated mountain
+  {
+    out.push_back(Triangle{_vertices[mountain[0]], _vertices[mountain[1]], _vertices[mountain[2]]});
+    return out;
+  }
+
   std::vector<unsigned int> prevs, nexts, current;
   prevs.reserve(mountain.size());
   nexts.reserve(mountain.size());
   unsigned int n = static_cast<unsigned int>(mountain.size());
 
   VertexID family[3];
-  for (unsigned int i = 0; i < n; ++i)
+  for (unsigned int i = 1; i < n - 1; ++i)
+  // find all convex vertices
+  // first & last are vertices from the base segment, we don't consider them
   {
     prevs.push_back(i ? i - 1 : n - 1);
     nexts.push_back(i == n - 1 ? 0 : i + 1);
@@ -278,6 +306,7 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
   unsigned int cur = 0;
   while (n)
   {
+    // get cut this ear
     cur = current.back();
 
     VertexID prev = prevs[cur], next = nexts[cur];
@@ -339,7 +368,7 @@ Triangles Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out
 
 bool Triangulator::IsZeroSize(VertexID vertices[3]) const
 {
-  if (config.zeroSizeTrianglePolicy == Config::KEEP_ALL)  // todo: handle other configurations
+  if (configTri.zeroSizeTrianglePolicy == Config::KEEP_ALL)  // todo: handle other configurations
     return false;
 
   double cross =
@@ -352,7 +381,7 @@ bool Triangulator::IsConvex(VertexID vertices[3]) const
   double cross =
       (_vertices[vertices[2]] - _vertices[vertices[1]]) ^ (_vertices[vertices[1]] - _vertices[vertices[0]]);
 
-  return config.useNeighborCacheToTransverse /* will be clockwise */ ? cross <= 0.
-                                                                     : cross >= 0.;  // todo: or use
-                                                                                     // tolerance?
+  return configTri.useNeighborCacheToTransverse /* will be clockwise */ ? cross >= 0.
+                                                                        : cross <= 0.;  // todo: or use
+                                                                                        // tolerance?
 }

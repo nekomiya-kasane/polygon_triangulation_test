@@ -1,14 +1,21 @@
 #pragma once
 
-#include "allocator.h"
-#include "vec2.h"
+#ifndef SEIDEL_TRAPEZOIDMAPP_H
+#  define SEIDEL_TRAPEZOIDMAPP_H
 
-#include "primitives.h"
+#  include "allocator.h"
+#  include "vec2.h"
 
-#include <set>
-#include <unordered_map>
+#  include "primitives.h"
 
-#define GET_REAL_ID(NODE_ID) _nodes[NODE_ID].value
+#  include <set>
+#  include <unordered_map>
+
+#  ifdef SEIDEL_INTERNAL_TEST
+#    define SEIDEL_PRIVATE public
+#  else
+#    define SEIDEL_PRIVATE protected
+#  endif
 
 class TrapezoidMapP
 {
@@ -20,13 +27,17 @@ public:
   {
     double tolerance       = 1e-16;
     bool checkIntersection = false;
+    bool useGivenSeed      = false;
+    int seed               = 1;
     unsigned short phase   = 0; /* phase to update `_vertexRegions` */
   } config;
 
-protected:
+  // clang-format off
+SEIDEL_PRIVATE :
   /* AddVertex : true - already added, false - newly added */
   bool AddVertex(VertexID vertexID, NodeID startNodeID = ROOT_NODE_ID);
   bool AddSegment(SegmentID segmentID);
+  // clang-format on
 
   RegionID Query(VertexID vertexID);
   RegionID QueryFrom(NodeID regionID, VertexID vertexID);
@@ -42,11 +53,13 @@ protected:
   RegionID _nextRegion = INVALID_INDEX, _tmpRegionToMerge = INVALID_INDEX;
   int _mergeType = 0; /* -1: merge left region, 0: no region to merge, 1: merge right region */
 
-protected:
+  // clang-format off
+SEIDEL_PRIVATE:
   Allocator<Node> _nodes;
   Allocator<Region> _regions;
   Allocator<Segment> _segments;
   Allocator<Vertex> _vertices;
+  // clang-format on
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
   Allocator<VertexID> _endVertices, _prevVertices;
@@ -65,9 +78,11 @@ protected:
   /* Initialized to the root node. INVALID_INDEX for already added vertices. */
   std::vector<NodeID> _vertexRegions;
 
-protected:
+  // clang-format off
+SEIDEL_PRIVATE:
   inline static bool Valid(AnyID index) { return index != INVALID_INDEX; }
   inline static bool Infinite(AnyID index) { return index == INFINITY_INDEX; }
+  // clang-format on
 
   // memory allocating
   inline Node &NewNode(Node::Type type)
@@ -136,3 +151,5 @@ protected:
                   Vertex *const intersection) const;
   // bool PointOnSegment();  // todo: "T" type coincidence
 };
+
+#endif SEIDEL_TRAPEZOIDMAPP_H

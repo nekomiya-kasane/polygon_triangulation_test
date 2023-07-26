@@ -1,11 +1,9 @@
 #pragma once
 
-#ifndef DUMMY_MATH_H
-#  define DUMMY_MATH_H
+#ifndef SEIDEL_VEC2_H
+#  define SEIDEL_VEC2_H
 
 #  define _CRT_FUNCTIONS_REQUIRED 1
-
-#  define SEIDEL_INVALID_INDEX (size_t)(-1)
 
 #  include <cmath>
 #  include <list>
@@ -47,4 +45,5 @@ struct Vec2
   double x;
   double y;
 };
+
 #endif
