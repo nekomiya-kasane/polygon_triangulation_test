@@ -73,12 +73,19 @@ protected:
     node.type  = type;
     return node;
   }
+  inline Node &NewNode(Node::Type type, AnyID value)
+  {
+    Node &node = _nodes.New();
+    node.id    = _nodes.Size() - 1;
+    node.type  = type;
+    node.value = value;
+    return node;
+  }
   template <class... Args>
   Region &NewRegion(Args... args)
   {
-    Node &node     = NewNode(Node::REGION);
+    Node &node     = NewNode(Node::REGION, _regions.Size());
     Region &region = _regions.New(args...);
-    node.value     = _regions.Size() - 1;
     region.nodeID  = node.id;
     return region;
   }

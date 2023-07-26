@@ -54,3 +54,6 @@ IndentPPDirectives: AfterHash
 
 # Include blocks style
 IncludeBlocks: Preserve
+
+AlignConsecutiveMacros:
+  Enabled: true

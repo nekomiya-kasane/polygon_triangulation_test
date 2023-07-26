@@ -7,9 +7,9 @@
 #include <random>
 
 #define GET_REAL_ID(NODE_ID) _nodes[NODE_ID].value
-#define GET_VERTEX(NODE_ID) _vertices[GET_REAL_ID(NODE_ID)]
+#define GET_VERTEX(NODE_ID)  _vertices[GET_REAL_ID(NODE_ID)]
 #define GET_SEGMENT(NODE_ID) _segments[GET_REAL_ID(NODE_ID)]
-#define GET_REGION(NODE_ID) _regions[GET_REAL_ID(NODE_ID)]
+#define GET_REGION(NODE_ID)  _regions[GET_REAL_ID(NODE_ID)]
 
 void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 {
@@ -150,9 +150,12 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
 
     while (Valid(_nextRegion))
     {
-      assert(!Valid(splittedSegment));
+      originalRegionID = _nextRegion;
       if (config.checkIntersection)
+      {
         splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+        assert(!Valid(splittedSegment));
+      }
       SplitRegionBySegment(originalRegionID, segmentID, type);
     }
 
@@ -215,10 +218,11 @@ SegmentID TrapezoidMapP::AppendSegment(bool dir)
 
 NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID)
 {
-  Region &highRegion = _regions[regionID];  // left
-  Region &lowRegion  = NewRegion();         // right
+  Region &highRegion   = _regions[regionID];  // left
+  Region &lowRegion    = NewRegion();         // right
+  RegionID lowRegionID = _regions.GetIndex(&lowRegion);
 
-  // sync info
+  // update the newly created lowRegion
   lowRegion.high             = vertexID;
   lowRegion.low              = highRegion.low;
   lowRegion.left             = highRegion.left;
@@ -228,16 +232,31 @@ NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID
   lowRegion.lowNeighbors[0]  = highRegion.lowNeighbors[0];
   lowRegion.lowNeighbors[1]  = highRegion.lowNeighbors[1];
 
+  // update the high neighbor of the lower neighbor of this region
+  for (int i = 0; i < 2; ++i)
+  {
+    RegionID lowNeighborID = highRegion.lowNeighbors[i];
+    if (Valid(lowNeighborID))
+    {
+      Region &lowNeighbor = _regions[lowNeighborID];
+      if (lowNeighbor.highNeighbors[0] == regionID)
+        lowNeighbor.highNeighbors[0] = lowRegionID;
+      if (lowNeighbor.highNeighbors[1] == regionID)
+        lowNeighbor.highNeighbors[1] = lowRegionID;
+    }
+  }
+
+  // update highRegion
   highRegion.low             = vertexID;
   highRegion.lowNeighbors[0] = GET_REAL_ID(lowRegion.nodeID);
   highRegion.lowNeighbors[1] = GET_REAL_ID(lowRegion.nodeID);
 
   // new NodeID for the original Region since it's now a leaf of the original node
-  Node &newNodeForHighRegion = NewNode(Node::REGION);
+  Node &newNodeForHighRegion = NewNode(Node::REGION, regionID);
   highRegion.nodeID          = newNodeForHighRegion.id;
 
   // maintain neighbors
-  _lowNeighbors[vertexID].left = _regions.GetIndex(&lowRegion);
+  _lowNeighbors[vertexID].left = lowRegionID;
 
   return {highRegion.nodeID, lowRegion.nodeID};
 }
@@ -263,7 +282,7 @@ void TrapezoidMapP::SplitRegionBySegment(RegionID regionID, SegmentID segmentID,
   originalNode.type  = Node::SEGMENT;
   originalNode.value = segmentID;
 
-  Node &newNodeForHighRegion = NewNode(Node::Type::REGION);
+  Node &newNodeForHighRegion = NewNode(Node::Type::REGION, regionID);
   highRegion.nodeID          = newNodeForHighRegion.id;  // renumber high region
 
   originalNode.left  = highRegion.nodeID;
@@ -277,6 +296,9 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
                                 int type)
 {
   // update high region
+  auto &highVertLowNei = _lowNeighbors[originalRegion.high];
+  RegionID lowRegionID = _regions.GetIndex(&lowRegion);
+
   switch (type)
   {
     //   --*----------------------|
@@ -285,20 +307,57 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
     //     |H \ <--- added        |
     case -2:
     {
+      // update this region's high neighbor's low neighbors
+      Region &highNeiRegion         = _regions[originalRegion.highNeighbors[1]];
+      highNeiRegion.lowNeighbors[1] = lowRegionID;
+
+      // update this region's neighbors
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
       highRegion.highNeighbors[0] = highRegion.highNeighbors[1] = INVALID_INDEX;
       lowRegion.high                                            = highRegion.high;
+
+      // update _lowNeighbors
+      assert(Valid(highVertLowNei.right));
+      highVertLowNei.mid   = highVertLowNei.right;
+      highVertLowNei.right = lowRegionID;
       break;
     }
-    //   |--------*---------------|
-    //   |         \     Low      |
-    //   | High     \             |
-    //   |           \ <--- added |
+
     case 0:
     {
+      // update this region's high neighbor's low neighbors
+      RegionID highNeiRegionHighID = originalRegion.highNeighbors[0],
+               highNeiRegionLowID  = originalRegion.highNeighbors[1];
+      Region &highNeiRegionHigh    = _regions[highNeiRegionHighID];
+      if (highNeiRegionHighID != highNeiRegionLowID)
+      {
+        //   |        |               |
+        //   |--------*---------------|
+        //   |         \     Low      |
+        //   | High     \             |
+        //   |           \ <--- added |
+
+        Region &highNeiRegionLow         = _regions[highNeiRegionLowID];
+        highNeiRegionLow.lowNeighbors[0] = highNeiRegionLow.lowNeighbors[1] = lowRegionID;
+      }
+      else
+      {
+        //   |                        |
+        //   |--------*---------------|
+        //   |         \     Low      |
+        //   | High     \             |
+        //   |           \ <--- added |
+
+        highNeiRegionHigh.lowNeighbors[1] = lowRegionID;
+      }
+
+      // update this region's neighbors
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
       highRegion.highNeighbors[1]                             = highRegion.highNeighbors[0];
       lowRegion.high                                          = highRegion.high;
+
+      // update _lowNeighbors
+      highVertLowNei.right = lowRegionID;
       break;
     }
     //   |------------------------*--
@@ -307,28 +366,43 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
     //   |          added ---> / L|
     case 2:
     {
+      // update this region's neighbors
       lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = INVALID_INDEX;
       lowRegion.high                                          = highRegion.high;
+
+      // update _lowNeighbors
+      assert(Valid(highVertLowNei.left));
+      highVertLowNei.mid  = highVertLowNei.left;
+      highVertLowNei.left = lowRegionID;
       break;
     }
-    //   |--------\---*------------|
-    //   |         \               |
-    //   |   High   \     Low      |
+    //   |-.-.-.-.\---*------------|
+    //   |  High   \               |
+    //   | (Merge)  \     Low      |
     //   |           \ <--- added  |
     case -1:
     {
-      lowRegion.highNeighbors[0]  = highRegion.highNeighbors[0];
-      lowRegion.highNeighbors[1]  = highRegion.highNeighbors[1];
-      highRegion.highNeighbors[1] = highRegion.highNeighbors[0];
+      // update this region's high neighbor's low neighbors
+      Region &highNeiRegion         = _regions[originalRegion.highNeighbors[1]];
+      highNeiRegion.lowNeighbors[0] = highNeiRegion.lowNeighbors[1] = lowRegionID;
+
+      // update this region's neighbors
+      lowRegion.highNeighbors[0] = highRegion.highNeighbors[0];
+      lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
+      // wrong!! -> highRegion.highNeighbors[1] = highRegion.highNeighbors[0];
+
+      // update _lowNeighbors
+      highVertLowNei.left = highVertLowNei.right = lowRegionID;
       break;
     }
-    //   |-----------*-----/-------|
-    //   |    High        /        |
-    //   |               /   Low   |
+    //   |-----------*-----/-.-.-.-|
+    //   |    High        /  Low   |
+    //   |               / (Merge) |
     //   |   added ---> /          |
     case 1:
     {
-      lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
+      // wrong!! -> lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = highRegion.highNeighbors[1];
+      // nothing to do actually.
       break;
     }
   }
@@ -368,8 +442,13 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
       //-----*--------------|
       //                    |
 
+      // update this region's neighbors
       high.lowNeighbors[0] = high.lowNeighbors[1] = INVALID_INDEX;
       high.low = low.low = leftLow;
+
+      // update this region's low neighbor's high neighbors
+      Region &lowNeiRegion          = _regions[original.lowNeighbors[1]];
+      lowNeiRegion.highNeighbors[1] = lowRegionID;
     }
     else if (rightLow == segment.lowVertex)
     {
@@ -384,19 +463,41 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
     }
     else
     {
-      //  |...........\.....|      |...........\.....|
-      //  |.added.--->.\....|      |.added.--->.\....|
-      //  |.............\...|  or  |.............\...|
-      //  |-------------*---|      |-------------*---|
-      //  |            /    |      |                 |
-
       // low neighbors of the low vertex of the original region
-      const auto &oriLowLowNei     = _lowNeighbors[original.low];
-      const auto oriLowLowNeiRight = Valid(oriLowLowNei.right) ? oriLowLowNei.right : oriLowLowNei.left;
+      const auto &oriLowVertLowNei = _lowNeighbors[original.low];
+      Region &lowNeiRegion         = _regions[original.lowNeighbors[1]];
 
-      high.lowNeighbors[0] = high.lowNeighbors[1] = oriLowLowNei.left;
-      low.lowNeighbors[0] = low.lowNeighbors[1] = oriLowLowNeiRight;
+      high.lowNeighbors[0] = high.lowNeighbors[1] = oriLowVertLowNei.left;
       high.low = low.low = original.low;
+
+      if (Valid(oriLowVertLowNei.right))
+      {
+        //  |...........\.....|
+        //  |.added.--->.\....|
+        //  |.............\...|
+        //  |-------------*---|
+        //  |            /    |
+
+        // update this region's neighbors
+        low.lowNeighbors[0] = low.lowNeighbors[1] = oriLowVertLowNei.right;
+
+        // update this region's low neighbor's high neighbors
+        lowNeiRegion.highNeighbors[0] = lowNeiRegion.highNeighbors[1] = lowRegionID;
+      }
+      else
+      {
+        //  |...........\.....|
+        //  |.added.--->.\....|
+        //  |.............\...|
+        //  |-------------*---|
+        //  |                 |
+
+        // update this region's neighbors
+        low.lowNeighbors[0] = low.lowNeighbors[1] = oriLowVertLowNei.left;
+
+        // update this region's low neighbor's high neighbors
+        lowNeiRegion.highNeighbors[1] = lowRegionID;
+      }
     }
 
     // no next region anymore

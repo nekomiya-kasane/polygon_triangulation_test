@@ -7,22 +7,22 @@ constexpr const char *const regionFiller()
   for (size_t i = 0; i < sizeof(Region); ++i)
     result[i] = '\0';
 
-  *(NodeID *)result = INVALID_INDEX;
+#define _FILL_DATA_(TYPE, MEMBER, VAL) *(TYPE *)&result[offsetof(Region, MEMBER)] = VAL;
+  _FILL_DATA_(NodeID, nodeID, INVALID_INDEX);
 
-  auto kk = offsetof(Region, high);
+  _FILL_DATA_(VertexID, high, INVALID_INDEX);
+  _FILL_DATA_(VertexID, low, INVALID_INDEX);
 
-  *(VertexID *)&result[offsetof(Region, high)] = INVALID_INDEX;
-  *(VertexID *)&result[offsetof(Region, low)]  = INVALID_INDEX;
+  _FILL_DATA_(SegmentID, left, INVALID_INDEX);
+  _FILL_DATA_(SegmentID, right, INVALID_INDEX);
 
-  *(SegmentID *)&result[offsetof(Region, left)]  = INVALID_INDEX;
-  *(SegmentID *)&result[offsetof(Region, right)] = INVALID_INDEX;
+  _FILL_DATA_(Depth, depth, INVALID_DEPTH);
 
-  *(Depth *)&result[offsetof(Region, depth)] = INVALID_DEPTH;
-
-  *(RegionID *)&result[offsetof(Region, highNeighbors[0])] = INVALID_INDEX;
-  *(RegionID *)&result[offsetof(Region, highNeighbors[1])] = INVALID_INDEX;
-  *(RegionID *)&result[offsetof(Region, lowNeighbors[0])]  = INVALID_INDEX;
-  *(RegionID *)&result[offsetof(Region, lowNeighbors[1])]  = INVALID_INDEX;
+  _FILL_DATA_(RegionID, highNeighbors[0], INVALID_INDEX);
+  _FILL_DATA_(RegionID, highNeighbors[1], INVALID_INDEX);
+  _FILL_DATA_(RegionID, lowNeighbors[0], INVALID_INDEX);
+  _FILL_DATA_(RegionID, lowNeighbors[1], INVALID_INDEX);
+#undef _FILL_DATA_
 
   return result;
 }
