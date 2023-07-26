@@ -21,7 +21,7 @@ public:
   using MountainDrawer = std::function<void(const Mountain &)>;
   using TriangleDrawer = std::function<void(const Triangle &)>;
 
-  struct A
+  struct
   {
     VertexDrawer *vertexDrawer     = nullptr;
     SegmentDrawer *segmentDrawer   = nullptr;
@@ -38,4 +38,10 @@ public:
 protected:
   Mountains _mountains;
   Triangles _triangles;
+
+  Vec2 _origin, _factor;
+
+  inline int x(double ix) const { return static_cast<int>(ix * _factor.x + _origin.x); }
+  inline int y(double iy) const { return static_cast<int>(iy * _factor.y + _origin.y); }
+  int evalX(double iy, const Segment &seg) const;
 };

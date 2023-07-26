@@ -10,6 +10,7 @@
 #  include <stack>
 #  include <vector>
 
+#  undef max
 constexpr double MAX_DOUBLE = std::numeric_limits<double>::max();
 
 struct Vec2;
