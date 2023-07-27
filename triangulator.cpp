@@ -32,7 +32,6 @@ Mountains Triangulator::ExtractMountains() const
         leftSegmentVisited[_regions.GetIndex(curRegionPtr)] = true;
 
         RegionID nextRegionID = curRegionPtr->lowNeighbors[0];
-        assert(Valid(nextRegionID));
         if (!Valid(nextRegionID))
           break;
         curRegionPtr = &_regions[nextRegionID];
@@ -101,7 +100,9 @@ Mountains Triangulator::ExtractMountains() const
       mountain.push_back(baseVertexID);
     }
 
-    mountains.push_back(mountain);
+    assert(mountain.size() >= 3);
+    if (mountain.size() >= 3)
+      mountains.push_back(mountain);
   };
 
   const auto ProcedureRight = [this, &leftSegmentVisited, &rightSegmentVisited, &mountains](
@@ -126,8 +127,7 @@ Mountains Triangulator::ExtractMountains() const
 
         rightSegmentVisited[_regions.GetIndex(curRegionPtr)] = true;
 
-        RegionID nextRegionID = curRegionPtr->lowNeighbors[0];
-        assert(Valid(nextRegionID));
+        RegionID nextRegionID = curRegionPtr->lowNeighbors[1];
         if (!Valid(nextRegionID))
           break;
         curRegionPtr = &_regions[nextRegionID];
@@ -143,14 +143,13 @@ Mountains Triangulator::ExtractMountains() const
       mountain.push_back(rightSegment.lowVertex);
 
       // go down to the lowest region with the same left segment
-      while (_segments[curRegionPtr->left].highVertex == baseVertexID)
+      while (_segments[curRegionPtr->right].highVertex == baseVertexID)
       {
         lastRegionPtr = curRegionPtr;
 
         rightSegmentVisited[_regions.GetIndex(lastRegionPtr)] = true;
 
         RegionID nextRegionID = curRegionPtr->lowNeighbors[1];
-        assert(Valid(nextRegionID));
         if (!Valid(nextRegionID))
           break;
 
@@ -246,7 +245,7 @@ Mountains Triangulator::ExtractMountains() const
 
 Triangles Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out) const
 {
-  if (configTri.mountainResolutionMethod == Config::EAR_CLIPPING)
+  if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING)
     return EarClipping(mountain, out);
   return ChimneyClipping(mountain, out);
 }
@@ -280,37 +279,45 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
     return out;
   }
 
+  bool clockwise = configTri.useNeighborCacheToTransverse;
+
   std::vector<unsigned int> prevs, nexts, current;
   prevs.reserve(mountain.size());
   nexts.reserve(mountain.size());
   unsigned int n = static_cast<unsigned int>(mountain.size());
 
-  VertexID family[3];
+  for (unsigned int i = 0; i < n; ++i)
+  {
+    prevs.push_back(i ? i - 1 : n - 1);
+    nexts.push_back(i == n - 1 ? 0 : i + 1);
+  }
+
   for (unsigned int i = 1; i < n - 1; ++i)
   // find all convex vertices
   // first & last are vertices from the base segment, we don't consider them
   {
-    prevs.push_back(i ? i - 1 : n - 1);
-    nexts.push_back(i == n - 1 ? 0 : i + 1);
-
-    family[0] = mountain[prevs[i]];
-    family[1] = mountain[i];
-    family[2] = mountain[nexts[i]];
-
-    if (IsConvex(family))
+    if (IsConvex(mountain[prevs[i]], mountain[i], mountain[nexts[i]], clockwise))
     {
       current.push_back(i);
     }
   }
+  assert(!current.empty());
 
   unsigned int cur = 0;
-  while (n)
+  while (n-- >= 3)
   {
     // get cut this ear
     cur = current.back();
 
     VertexID prev = prevs[cur], next = nexts[cur];
-    out.push_back(Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]});
+
+    Triangle triangle =
+        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
+    if (CheckTriangle(triangle))
+      out.push_back(triangle);
+
+    if (n == 2)
+      break;
 
     prevs[next] = prev;
     nexts[prev] = next;
@@ -319,17 +326,14 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
     current.pop_back();
 
     // prev neighbor
-    family[0] = mountain[prevs[prev]];
-    family[1] = mountain[prev];
-    family[2] = mountain[nexts[prev]];
-    if (0 != prev && (n - 1) != prev && IsConvex(family))  // not base && is convex
+    if (0 != prev && (n - 1) != prev &&
+        IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
+                 clockwise))  // not base && is convex
       current.push_back(prev);
 
     // next neighbor
-    family[0] = mountain[prevs[next]];
-    family[1] = mountain[next];
-    family[2] = mountain[nexts[next]];
-    if (0 != next && (n - 1) != next && IsConvex(family))
+    if (0 != next && (n - 1) != next &&
+        IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
       current.push_back(next);
   }
 
@@ -338,27 +342,32 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
 
 Triangles Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out) const
 {
+  // todo: this is highly possibly to be problematic. Re-read this.
   assert(mountain.size() > 2);
   std::vector<VertexID> stack = {mountain[0], mountain[1]};
+
+  bool clockwise = configTri.useNeighborCacheToTransverse;
 
   VertexID next;
   for (size_t i = 2; i < mountain.size() && stack.size() >= 2; ++i)
   {
-    next                  = mountain[i];
-    VertexID prevThree[3] = {next, stack.back(), *(stack.cend() - 2)};
-    if (!IsConvex(prevThree))
+    next = mountain[i];
+
+    VertexID current = stack.back(), prev = *(stack.cend() - 2);
+    if (!IsConvex(next, current, prev, clockwise))
       stack.push_back(next);
     else
     {
-      while (IsConvex(prevThree))
+      while (IsConvex(next, current, prev, clockwise))
       {
-        if (!IsZeroSize(prevThree))
-          out.push_back(Triangle{_vertices[prevThree[2]], _vertices[prevThree[1]], _vertices[prevThree[0]]});
-        prevThree[1] = prevThree[0];
+        Triangle triangle = Triangle{_vertices[prev], _vertices[current], _vertices[next]};
+        if (CheckTriangle(triangle))
+          out.push_back(triangle);
+        current = next;
         stack.pop_back();
         if (stack.size() < 2)
           break;
-        prevThree[0] = *(stack.cend() - 2);
+        next = *(stack.cend() - 2);
       }
     }
   }
@@ -366,22 +375,69 @@ Triangles Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out
   return out;
 }
 
-bool Triangulator::IsZeroSize(VertexID vertices[3]) const
+bool Triangulator::CheckTriangle(const Triangle &triangle) const
 {
-  if (configTri.zeroSizeTrianglePolicy == Config::KEEP_ALL)  // todo: handle other configurations
-    return false;
-
-  double cross =
-      (_vertices[vertices[2]] - _vertices[vertices[1]]) ^ (_vertices[vertices[1]] - _vertices[vertices[0]]);
-  return std::abs(cross) < config.tolerance;
+  if (configTri.zeroSizeTrianglePolicy ^ ConfigTri::KEEP_LINELIKE)
+  {
+    if (IsZeroSize(triangle[0], triangle[1], triangle[2]))
+      return false;
+  }
+  if (configTri.zeroSizeTrianglePolicy ^ ConfigTri::KEEP_POINTLIKE)
+  {
+    if (IsPointLike(triangle[0], triangle[1], triangle[2], true))
+      return false;
+  }
+  return true;
 }
 
-bool Triangulator::IsConvex(VertexID vertices[3]) const
+bool Triangulator::IsZeroSize(VertexID prevID, VertexID currentID, VertexID nextID) const
 {
-  double cross =
-      (_vertices[vertices[2]] - _vertices[vertices[1]]) ^ (_vertices[vertices[1]] - _vertices[vertices[0]]);
+  const Vertex &prev = _vertices[prevID], &current = _vertices[currentID], &next = _vertices[nextID];
+  return IsZeroSize(prev, current, next);
+}
 
-  return configTri.useNeighborCacheToTransverse /* will be clockwise */ ? cross >= 0.
-                                                                        : cross <= 0.;  // todo: or use
-                                                                                        // tolerance?
+bool Triangulator::IsZeroSize(const Vertex &prev, const Vertex &current, const Vertex &next) const
+{
+  if (configTri.zeroSizeTrianglePolicy == ConfigTri::KEEP_ALL)  // todo: handle other configurations
+    return false;
+
+  double cross = (next - current) ^ (current - prev);
+  return std::abs(cross) <= config.tolerance;
+}
+
+bool Triangulator::IsPointLike(VertexID prevID,
+                               VertexID currentID,
+                               VertexID nextID,
+                               bool assumeZeroSize) const
+{
+  const Vertex &prev = _vertices[prevID], &current = _vertices[currentID], &next = _vertices[nextID];
+  return IsPointLike(prev, current, next, assumeZeroSize);
+}
+
+bool Triangulator::IsPointLike(const Vertex &prev,
+                               const Vertex &current,
+                               const Vertex &next,
+                               bool assumeZeroSize /* = false */) const
+{
+  bool zeroSize = assumeZeroSize ? true : IsZeroSize(prev, current, next);
+  if (!zeroSize)
+    return false;
+  return (next - current).NormSq() <= config.tolerance && (current - prev).NormSq() <= config.tolerance;
+}
+
+bool Triangulator::IsConvex(VertexID prevID, VertexID currentID, VertexID nextID, bool clockwise) const
+{
+  const Vertex &prev = _vertices[prevID], &current = _vertices[currentID], &next = _vertices[nextID];
+  return IsConvex(prev, current, next, clockwise);
+}
+
+bool Triangulator::IsConvex(const Vertex &prev,
+                            const Vertex &current,
+                            const Vertex &next,
+                            bool clockwise) const
+{
+  double cross = (next - current) ^ (current - prev);
+
+  return clockwise ? cross >= 0. : cross <= 0.;  // todo: or use
+                                                 // tolerance?
 }

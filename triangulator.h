@@ -27,7 +27,7 @@ public:
 
   virtual Triangles Triangulate() const;
 
-  struct Config
+  struct ConfigTri
   {
     enum CoarselyNearVerticesPolicy
     {
@@ -40,7 +40,7 @@ public:
     {
       DISCARD_ALL    = 0,
       KEEP_LINELIKE  = 0x01,
-      KEEP_POINTLIKE = 0x02,
+      KEEP_POINTLIKE = 0x02 | KEEP_LINELIKE,
       KEEP_ALL       = KEEP_LINELIKE | KEEP_POINTLIKE,
     };
 
@@ -74,8 +74,17 @@ protected:
   Triangles EarClipping(const Mountain &mountain, Triangles &out) const;
   Triangles ChimneyClipping(const Mountain &mountain, Triangles &out) const;
 
-  bool IsZeroSize(VertexID vertices[3]) const;
-  bool IsConvex(VertexID vertices[3]) const;
+  bool CheckTriangle(const Triangle &triangle) const;
+
+  bool IsZeroSize(VertexID prevID, VertexID currentID, VertexID nextID) const;
+  bool IsZeroSize(const Vertex &prev, const Vertex &current, const Vertex &next) const;
+  bool IsPointLike(VertexID prev, VertexID current, VertexID next, bool assumeZeroSize = false) const;
+  bool IsPointLike(const Vertex &prev,
+                   const Vertex &current,
+                   const Vertex &next,
+                   bool assumeZeroSize = false) const;
+  bool IsConvex(VertexID prev, VertexID current, VertexID next, bool clockwise = false) const;
+  bool IsConvex(const Vertex &prev, const Vertex &current, const Vertex &next, bool clockwise = false) const;
 };
 
 #endif SEIDEL_TRIANGULATOR_H
