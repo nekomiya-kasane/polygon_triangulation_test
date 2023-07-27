@@ -7,6 +7,9 @@
 class ViewableTriangulator : public Triangulator
 {
 public:
+  ~ViewableTriangulator();
+
+  void SetOrigin(Vec2 origin);
   void Draw(Vec2 origin, Vec2 factor);
   void GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const;
 
@@ -39,9 +42,9 @@ protected:
   Mountains _mountains;
   Triangles _triangles;
 
-  Vec2 _origin, _factor;
+  Vec2 _centroid, _origin, _factor;
 
-  inline int x(double ix) const { return static_cast<int>(ix * _factor.x + _origin.x); }
-  inline int y(double iy) const { return static_cast<int>(iy * _factor.y + _origin.y); }
+  inline int x(double ix) const { return static_cast<int>((ix - _centroid.x) * _factor.x + _origin.x); }
+  inline int y(double iy) const { return static_cast<int>((iy - _centroid.y) * _factor.y + _origin.y); }
   int evalX(double iy, const Segment &seg) const;
 };

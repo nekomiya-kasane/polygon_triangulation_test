@@ -31,7 +31,13 @@ int main()
 
   tri.AddPolygon(points, true);
   tri.Build();
-  tri.Triangulate();
+  // tri.Triangulate();
+
+  tri.SetOrigin({512, 384});
+
+  Vec2 lt, rb;
+  tri.GetBoundingBox(lt, rb);
+  Vec2 ori = (lt + rb) / 2, factor{0.8 * 1024. / (rb - lt).x, 0.8 * 768. / (rb - lt).y};
 
   while (true)
   {
@@ -49,7 +55,7 @@ int main()
     }
 
     {
-      tri.Draw({512, 384}, {100, -100});
+      tri.Draw(ori, factor);
       // tri._needRedraw = false;
     }
 

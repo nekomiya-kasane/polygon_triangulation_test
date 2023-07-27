@@ -6,13 +6,29 @@
 #include <iterator>
 #include <limits>
 
-void ViewableTriangulator::Draw(Vec2 origin, Vec2 factor)
+ViewableTriangulator::~ViewableTriangulator()
+{
+  Triangulator::~Triangulator();
+
+  delete methods.vertexDrawer;
+  delete methods.regionDrawer;
+  delete methods.segmentDrawer;
+  delete methods.triangleDrawer;
+  delete methods.mountainDrawer;
+}
+
+void ViewableTriangulator::SetOrigin(Vec2 origin)
+{
+  _origin = origin;
+}
+
+void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 {
   if (!_needRedraw)
     return;
 
-  _origin = origin;
-  _factor = factor;
+  _centroid = centroid;
+  _factor   = factor;
 
   if (!methods.vertexDrawer)
   {
@@ -109,6 +125,19 @@ void ViewableTriangulator::Draw(Vec2 origin, Vec2 factor)
 
       setlinecolor(RGB(128, 255, 0));
       polygon(pts, 3);
+    });
+
+    methods.mountainDrawer = new MountainDrawer([this](const Mountain &mountain) {
+      POINT *pts = new POINT[mountain.size() + 1];
+      for (int i = 0; i < mountain.size(); ++i)
+      {
+        const Vertex &vert = _vertices[mountain[i]];
+        pts[i].x           = x(vert.x);
+        pts[i].y           = y(vert.y);
+      }
+      pts[mountain.size()].x = x(_vertices[mountain[0]].x);
+      pts[mountain.size()].y = y(_vertices[mountain[0]].y);
+      delete[] pts;
     });
   }
 
