@@ -14,8 +14,10 @@ Mountains Triangulator::ExtractMountains() const
                                  const Region &region, SegmentID leftSegmentID, const Segment &leftSegment) {
     VertexID baseVertexID = leftSegment.highVertex;
 
-    Mountain mountain;  // first and last vertex be the endpoints of the base egde
+    Mountain mountain;  // first and last vertex be the endpoints of the base edge
+
     // jump to the top then go down
+    bool clockwise = false;
     if (configTri.useNeighborCacheToTransverse)
     {
       mountain.push_back(baseVertexID);
@@ -38,6 +40,7 @@ Mountains Triangulator::ExtractMountains() const
       }
 
       mountain.push_back(leftSegment.lowVertex);
+      clockwise = true;
     }
     // go down then transverse up
     else
@@ -98,11 +101,12 @@ Mountains Triangulator::ExtractMountains() const
       }
 
       mountain.push_back(baseVertexID);
+      clockwise = false;
     }
 
     assert(mountain.size() >= 3);
     if (mountain.size() >= 3)
-      mountains.push_back(mountain);
+      mountains.push_back({mountain, clockwise});
   };
 
   const auto ProcedureRight = [this, &leftSegmentVisited, &rightSegmentVisited, &mountains](
@@ -111,9 +115,12 @@ Mountains Triangulator::ExtractMountains() const
     VertexID baseVertexID = rightSegment.highVertex;
 
     Mountain mountain;
+
     // jump to the top then go down
+    bool clockwise = false;
     if (configTri.useNeighborCacheToTransverse)
     {
+      // todo: check this
       mountain.push_back(baseVertexID);
 
       const auto &tln = _lowNeighbors[baseVertexID];  // top low neighbors
@@ -134,6 +141,7 @@ Mountains Triangulator::ExtractMountains() const
       }
 
       mountain.push_back(rightSegment.lowVertex);
+      clockwise = false;
     }
     // go down then transverse up
     else
@@ -177,9 +185,12 @@ Mountains Triangulator::ExtractMountains() const
       }
 
       mountain.push_back(baseVertexID);
+      clockwise = true;
     }
 
-    mountains.push_back(mountain);
+    assert(mountain.size() >= 3);
+    if (mountain.size() >= 3)
+      mountains.push_back({mountain, clockwise});
   };
 
   // resolve normal mountain
@@ -243,10 +254,10 @@ Mountains Triangulator::ExtractMountains() const
   return mountains;
 }
 
-Triangles Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out) const
+Triangles Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
   if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING)
-    return EarClipping(mountain, out);
+    return EarClipping(mountain, out, clockwise);
   return ChimneyClipping(mountain, out);
 }
 
@@ -254,13 +265,13 @@ Triangles Triangulator::Triangulate() const
 {
   Triangles triangles;
 
-  for (const auto &mountain : ExtractMountains())
-    TriangulateMountain(mountain, triangles);
+  for (const auto &[mountain, cw] : ExtractMountains())
+    TriangulateMountain(mountain, triangles, cw);
 
   return triangles;
 }
 
-Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) const
+Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
   // [Monotone Mountain Triangulation] using a special ear clipping algorithm:
   //   Initialize an empty list
@@ -278,8 +289,6 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out) co
     out.push_back(Triangle{_vertices[mountain[0]], _vertices[mountain[1]], _vertices[mountain[2]]});
     return out;
   }
-
-  bool clockwise = configTri.useNeighborCacheToTransverse;
 
   std::vector<unsigned int> prevs, nexts, current;
   prevs.reserve(mountain.size());

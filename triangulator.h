@@ -17,8 +17,8 @@ struct Triangle
 };
 
 using Triangles = std::vector<Triangle>;
-using Mountain  = std::vector<VertexID>;  // first is the base
-using Mountains = std::vector<Mountain>;  // first is the base
+using Mountain  = std::vector<VertexID>;                   // first is the base
+using Mountains = std::vector<std::pair<Mountain, bool>>;  // first is the base
 
 class Triangulator : public TrapezoidMapP
 {
@@ -69,9 +69,9 @@ public:
 protected:
   virtual Mountains ExtractMountains() const;
 
-  Triangles TriangulateMountain(const Mountain &mountain, Triangles &out) const;
+  Triangles TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const;
 
-  Triangles EarClipping(const Mountain &mountain, Triangles &out) const;
+  Triangles EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const;
   Triangles ChimneyClipping(const Mountain &mountain, Triangles &out) const;
 
   bool CheckTriangle(const Triangle &triangle) const;

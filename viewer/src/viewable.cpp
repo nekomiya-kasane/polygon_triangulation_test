@@ -143,7 +143,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   for (const auto &mountain : _mountains)
     if (methods.mountainDrawer)
-      (*methods.mountainDrawer)(mountain);
+      (*methods.mountainDrawer)(mountain.first);
 
   for (const auto &region : _regions)
     if (methods.regionDrawer)
