@@ -31,7 +31,7 @@ int main()
 
   tri.AddPolygon(points, true);
   tri.Build();
-  // tri.Triangulate();
+  tri.Triangulate();
 
   tri.SetOrigin({512, 384});
 
