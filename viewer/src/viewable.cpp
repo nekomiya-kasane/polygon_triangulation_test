@@ -5,6 +5,7 @@
 
 #include <iterator>
 #include <limits>
+#include <string>
 
 ViewableTriangulator::~ViewableTriangulator()
 {
@@ -32,7 +33,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   if (!methods.vertexDrawer)
   {
-    methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex) {
+    methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex, const std::string &label) {
       // draw horizontal line
       LINESTYLE oldStyle;
       getlinestyle(&oldStyle);
@@ -62,25 +63,29 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       setlinecolor(WHITE);
       circle((int)x(vertex.x), (int)y(vertex.y), (int)drawingConfig.vertexRadius);
       setfillcolor(LIGHTRED);
+      settextcolor(LIGHTRED);
       fillcircle((int)x(vertex.x), (int)y(vertex.y), (int)drawingConfig.vertexRadius);
+      outtextxy((int)x(vertex.x) + drawingConfig.vertexRadius, (int)y(vertex.y) + drawingConfig.vertexRadius,
+                label.c_str());
     });
 
-    methods.segmentDrawer = new SegmentDrawer([this](const Segment &segment) {
+    methods.segmentDrawer = new SegmentDrawer([this](const Segment &segment, const std::string &) {
       const Vertex &highVertex = _vertices[segment.highVertex];
       const Vertex &lowVertex  = _vertices[segment.lowVertex];
       setlinecolor(LIGHTCYAN);
       line((int)x(highVertex.x), (int)y(highVertex.y), (int)x(lowVertex.x), (int)y(lowVertex.y));
     });
 
-    methods.regionDrawer = new RegionDrawer([this](const Region &region) {
+    methods.regionDrawer = new RegionDrawer([this](const Region &region, const std::string &label) {
       LINESTYLE oldStyle;
       getlinestyle(&oldStyle);
 
       if (region.depth != 0)
       {
+        auto color = region.depth % 2 == 1 ? RGB(77, 77, 0) : RGB(0, 77, 77);
         setlinecolor(RGB(128, 128, 128));
         setlinestyle(PS_NULL);
-        setfillcolor(region.depth % 2 == 1 ? RGB(77, 77, 0) : RGB(0, 77, 77));
+        setfillcolor(color);
         const Segment &left = _segments[region.left], &right = _segments[region.right];
         const Vec2 ll = _vertices[left.lowVertex], lh = _vertices[left.highVertex],
                    rl = _vertices[right.lowVertex], rh = _vertices[right.highVertex];
@@ -88,33 +93,29 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
         if (highY == lowY)
           return;
 
+        POINT pts[4] = {{evalX(lowY, left), y(lowY)},
+                        {evalX(lowY, right), y(lowY)},
+                        {evalX(highY, right), y(highY)},
+                        {evalX(highY, left), y(highY)}};
+
         // degenerated
         if (left.lowVertex == right.lowVertex)
-        {
-          POINT pts[3] = {
-              {evalX(lowY, right), y(lowY)}, {evalX(highY, right), y(highY)}, {evalX(highY, left), y(highY)}};
-          fillpolygon((POINT *)pts, 3);
-        }
+          fillpolygon((POINT *)(pts + 1), 3);
         else if (left.highVertex == right.highVertex)
-        {
-          POINT pts[3] = {
-              {evalX(lowY, left), y(lowY)}, {evalX(lowY, right), y(lowY)}, {evalX(highY, left), y(highY)}};
           fillpolygon((POINT *)pts, 3);
-        }
         // non-degenerated
         else
-        {
-          POINT pts[4] = {{evalX(lowY, left), y(lowY)},
-                          {evalX(lowY, right), y(lowY)},
-                          {evalX(highY, right), y(highY)},
-                          {evalX(highY, left), y(highY)}};
           fillpolygon(pts, 4);
-        }
+
+        int midX = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+
+        settextcolor(color * 3);
+        outtextxy(midX, (pts[0].y + pts[2].y) / 2, label.c_str());
         setlinestyle(&oldStyle);
       }
     });
 
-    methods.triangleDrawer = new TriangleDrawer([this](const Triangle &tri) {
+    methods.triangleDrawer = new TriangleDrawer([this](const Triangle &tri, const std::string &) {
       POINT pts[3];
       pts[0].x = x(tri[0].x);
       pts[0].y = y(tri[0].y);
@@ -127,7 +128,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       polygon(pts, 3);
     });
 
-    methods.mountainDrawer = new MountainDrawer([this](const Mountain &mountain) {
+    methods.mountainDrawer = new MountainDrawer([this](const Mountain &mountain, const std::string &) {
       POINT *pts = new POINT[mountain.size() + 1];
       for (int i = 0; i < mountain.size(); ++i)
       {
@@ -141,25 +142,30 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
     });
   }
 
-  for (const auto &mountain : _mountains)
-    if (methods.mountainDrawer)
-      (*methods.mountainDrawer)(mountain.first);
+  size_t i = 0;
+  if (methods.mountainDrawer)
+    for (const auto &mountain : _mountains)
+      (*methods.mountainDrawer)(mountain.first, "M" + std::to_string(i++));
 
-  for (const auto &region : _regions)
-    if (methods.regionDrawer)
-      (*methods.regionDrawer)(region);
+  i = 0;
+  if (methods.regionDrawer)
+    for (const auto &region : _regions)
+      (*methods.regionDrawer)(region, "S" + std::to_string(i++));
 
-  for (const auto &triangle : _triangles)
-    if (methods.triangleDrawer)
-      (*methods.triangleDrawer)(triangle);
+  i = 0;
+  if (methods.triangleDrawer)
+    for (const auto &triangle : _triangles)
+      (*methods.triangleDrawer)(triangle, "T" + std::to_string(i++));
 
-  for (const auto &segment : _segments)
-    if (methods.segmentDrawer)
-      (*methods.segmentDrawer)(segment);
+  i = 0;
+  if (methods.segmentDrawer)
+    for (const auto &segment : _segments)
+      (*methods.segmentDrawer)(segment, "e" + std::to_string(i++));
 
-  for (const auto &vertex : _vertices)
-    if (methods.vertexDrawer)
-      (*methods.vertexDrawer)(vertex);
+  i = 0;
+  if (methods.vertexDrawer)
+    for (const auto &vertex : _vertices)
+      (*methods.vertexDrawer)(vertex, "v" + std::to_string(i++));
 }
 
 void ViewableTriangulator::GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const

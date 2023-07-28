@@ -137,6 +137,8 @@ bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)
 
 bool TrapezoidMapP::AddSegment(SegmentID segmentID)
 {
+  TRACE("Add segment: " << segmentID);
+
   // add from high to low
   Segment &segment = _segments[segmentID];
 
@@ -476,7 +478,7 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
       //  |.............\/
       //  |-------------*---
       //  |
-      
+
       // update this region's low neighbor's high neighbors
       Region &lowNeiRegion          = _regions[originalRegion.lowNeighbors[0]];
       lowNeiRegion.highNeighbors[0] = highRegionID;

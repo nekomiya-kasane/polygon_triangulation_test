@@ -18,11 +18,11 @@ public:
   virtual Triangles Triangulate() const;
   virtual Mountains ExtractMountains() const;
 
-  using VertexDrawer   = std::function<void(const Vertex &)>;
-  using SegmentDrawer  = std::function<void(const Segment &)>;
-  using RegionDrawer   = std::function<void(const Region &)>;
-  using MountainDrawer = std::function<void(const Mountain &)>;
-  using TriangleDrawer = std::function<void(const Triangle &)>;
+  using VertexDrawer   = std::function<void(const Vertex &, const std::string &)>;
+  using SegmentDrawer  = std::function<void(const Segment &, const std::string &)>;
+  using RegionDrawer   = std::function<void(const Region &, const std::string &)>;
+  using MountainDrawer = std::function<void(const Mountain &, const std::string &)>;
+  using TriangleDrawer = std::function<void(const Triangle &, const std::string &)>;
 
   struct
   {

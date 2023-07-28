@@ -24,7 +24,7 @@ int main()
   // Vec2Set points = {{53, 131},  {122, 238}, {204, 167}, {239, 269}, {93, 353},
   //                  {247, 328}, {326, 369}, {296, 215}, {222, 46},  {157, 119}};
 
-  Vec2Set points = {{-1, 0}, {0, 2}, {1, 0}, {0, 1}};
+  Vec2Set points = {{0, 2}, {0, 1}, {-1, 0}, {4, 0}, {4, 1}};
 
   ViewableTriangulator tri;
   tri.config.useGivenSeed = true;

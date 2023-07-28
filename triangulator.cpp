@@ -335,14 +335,12 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
     current.pop_back();
 
     // prev neighbor
-    if (0 != prev && (n - 1) != prev &&
-        IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
+    if (IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
                  clockwise))  // not base && is convex
       current.push_back(prev);
 
     // next neighbor
-    if (0 != next && (n - 1) != next &&
-        IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
+    if (IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
       current.push_back(next);
   }
 

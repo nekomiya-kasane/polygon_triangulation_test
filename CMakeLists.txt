@@ -24,6 +24,10 @@ set(SeidelHeaders
 	"views.natvis"
 )
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+	add_compile_definitions(_DEBUG)
+endif ()
+
 add_library(seidel_triangulator STATIC)
 target_sources(seidel_triangulator PRIVATE ${SeidelSources} PUBLIC ${SeidelHeaders})
 target_include_directories(seidel_triangulator PUBLIC "./")
@@ -31,6 +35,6 @@ target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_USE_SIGNED_INDEX)
 if (ENABLE_INTERNAL_TESTS)
 	target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_INTERNAL_TEST)
 	add_subdirectory(tests)
-endif()
+endif ()
 
 add_subdirectory(viewer)

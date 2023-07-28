@@ -3,6 +3,7 @@
 #ifndef SEIDEL_PRIMITIVES_H
 #  define SEIDEL_PRIMITIVES_H
 
+#  include <iostream>
 #  include <utility>
 
 #  include "vec2.h"
@@ -67,4 +68,9 @@ struct Segment
 using Vertex   = Vec2;
 using NodePair = std::pair<NodeID, NodeID>;
 
+#  ifdef SHOW_TRACE
+#    define TRACE(X) std::cout << X << std::endl;
+#  else
+#    define TRACE(X)
+#  endif
 #endif
