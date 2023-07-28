@@ -476,13 +476,20 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
       //  |.............\/
       //  |-------------*---
       //  |
+      
+      // update this region's low neighbor's high neighbors
+      Region &lowNeiRegion          = _regions[originalRegion.lowNeighbors[0]];
+      lowNeiRegion.highNeighbors[0] = highRegionID;
 
+      // update this region's neighbors
+      highRegion.lowNeighbors[0] = highRegion.lowNeighbors[1] = originalRegion.lowNeighbors[0];
       lowRegion.lowNeighbors[0] = lowRegion.lowNeighbors[1] = INVALID_INDEX;
       highRegion.low = lowRegion.low = rightLowVertex;
     }
     else
     {
       // low neighbors of the low vertex of the original region
+      // todo: what about use the low neighbors stored in originalRegion
       const auto &oriLowVertLowNei = _lowNeighbors[originalRegion.low];
       Region &lowNeiRegion         = _regions[originalRegion.lowNeighbors[1]];
 
@@ -999,7 +1006,7 @@ int TrapezoidMapP::Higher(const Vertex &leftVertex, const Vertex &rightVertex) c
   if (leftVertex.x < rightVertex.x)
     return true;
   if (leftVertex.x > rightVertex.x)
-    return true;
+    return false;
 
   return -1;  // uncertain
 }
