@@ -5,7 +5,9 @@
 #include "triangulator.h"
 
 #ifndef USE_EASYX
+#  pragma warning(push, 0)
 #  include "raylib.h"
+#  pragma warning(pop)
 #endif
 
 class ViewableTriangulator : public Triangulator
@@ -56,8 +58,8 @@ protected:
   inline int y(double iy) const { return static_cast<int>((iy - _centroid.y) * _factor.y + _origin.y); }
   int evalX(double iy, const Segment &seg) const;
 #else
-  inline float x(double ix) const { return (ix - _centroid.x) * _factor.x + _origin.x; }
-  inline float y(double iy) const { return (iy - _centroid.y) * _factor.y + _origin.y; }
+  inline float x(double ix) const { return static_cast<float>((ix - _centroid.x) * _factor.x + _origin.x); }
+  inline float y(double iy) const { return static_cast<float>((iy - _centroid.y) * _factor.y + _origin.y); }
   float evalX(double iy, const Segment &seg) const;
 #endif
 };

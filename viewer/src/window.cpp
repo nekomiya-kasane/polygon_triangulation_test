@@ -73,6 +73,7 @@ int main()
   closegraph();
 }
 #else
+#  pragma warning(push, 0)
 #  include "raylib.h"
 
 #  include "raymath.h"
@@ -80,6 +81,7 @@ int main()
 
 #  define RAYGUI_IMPLEMENTATION
 #  include "raygui.h"  // Required for GUI controls
+#  pragma warning(pop)
 
 struct
 {

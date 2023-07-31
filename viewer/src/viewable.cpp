@@ -4,13 +4,15 @@
 #  include "easyx.h"
 #  include "graphics.h"
 #else
+#  pragma warning(push, 0)
 #  include "raylib.h"
+#  pragma warning(pop)
 #endif
 
 #include <iterator>
 #include <limits>
-#include <string>
 #include <sstream>
+#include <string>
 
 ViewableTriangulator::~ViewableTriangulator()
 {
@@ -26,6 +28,8 @@ void ViewableTriangulator::SetOrigin(Vec2 origin)
   _origin = origin;
 }
 
+#pragma warning(push)
+#pragma warning(disable : 4244)
 void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 {
   if (!_needRedraw)
@@ -261,7 +265,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   if (!methods.triangleDrawer)
   {
-    methods.triangleDrawer = new TriangleDrawer([this](const Triangle &tri, const std::string &) {
+    methods.triangleDrawer = new TriangleDrawer([this](const Triangle &tri, const std::string &label) {
       Vector2 pts[3];
       pts[0].x = x(tri[0].x);
       pts[0].y = y(tri[0].y);
@@ -270,13 +274,16 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       pts[2].x = x(tri[2].x);
       pts[2].y = y(tri[2].y);
 
+      float midX = (pts[0].x + pts[1].x + pts[2].x) / 3, midY = (pts[0].y + pts[1].y + pts[2].y) / 3;
+
       DrawTriangleLines(pts[0], pts[1], pts[2], GREEN);
+      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20, 0, GREEN);
     });
   }
 
   if (!methods.mountainDrawer)
   {
-      // not needed currently.
+    // not needed currently.
   }
 #endif
 
@@ -309,6 +316,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
   ss << "Triangles: " << std::to_string(_triangles.size()) << std::endl;
   DrawTextEx(drawingConfig.font, ss.str().c_str(), {850, 8}, 24, 0, Fade(GREEN, 0.7));
 }
+#pragma warning(pop)
 
 void ViewableTriangulator::GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const
 {
