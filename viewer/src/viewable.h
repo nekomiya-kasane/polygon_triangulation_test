@@ -41,7 +41,7 @@ public:
 
   struct
   {
-    int vertexRadius = 4;
+    float vertexRadius = 4;
 #ifndef USE_EASYX
     Font font;
 #endif

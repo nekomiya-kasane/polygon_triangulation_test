@@ -175,7 +175,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       DrawCircleLines(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, WHITE);
       DrawTextEx(drawingConfig.font, label.c_str(),
                  Vector2{x(vertex.x) + drawingConfig.vertexRadius, y(vertex.y) + drawingConfig.vertexRadius},
-                 20, 0, RED);
+                 20.f, 0.f, RED);
     });
   }
 
@@ -259,7 +259,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       else
         midY = y((lowY + highY) / 2.);
 
-      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20, 0, color);
+      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20.f, 0.f, color);
     });
   }
 
@@ -314,7 +314,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   std::stringstream ss;
   ss << "Triangles: " << std::to_string(_triangles.size()) << std::endl;
-  DrawTextEx(drawingConfig.font, ss.str().c_str(), {850, 8}, 24, 0, Fade(GREEN, 0.7));
+  DrawTextEx(drawingConfig.font, ss.str().c_str(), {850.f, 8.f}, 24.f, 0.f, Fade(GREEN, 0.7f));
 }
 #pragma warning(pop)
 
@@ -365,7 +365,7 @@ float ViewableTriangulator::evalX(double iy, const Segment &seg) const
 {
   const Vec2 low = _vertices[seg.lowVertex], high = _vertices[seg.highVertex];
   if (low.y == high.y)
-    return (low.x + high.x) / 2;
+    return static_cast<float>((low.x + high.x) / 2);
   return x((iy - low.y) / (high.y - low.y) * (high.x - low.x) + low.x);
 }
 #endif

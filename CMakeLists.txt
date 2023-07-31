@@ -9,17 +9,17 @@ option(ENABLE_INTERNAL_TESTS "" ON)
 # file(GLOB_RECURSE SeidelHeaders "./*.h")
 
 set(SeidelSources
-	"vec2.cpp"
-	"primitives.cpp"
-	"trapezoidMapP.cpp"
-	"triangulator.cpp"
+	"src/vec2.cpp"
+	"src/primitives.cpp"
+	"src/trapezoidMapP.cpp"
+	"src/triangulator.cpp"
 )
 set(SeidelHeaders 
-	"vec2.h"
-	"primitives.h"
-	"allocator.h"
-	"trapezoidMapP.h"
-	"triangulator.h"
+	"src/vec2.h"
+	"src/primitives.h"
+	"src/allocator.h"
+	"src/trapezoidMapP.h"
+	"src/triangulator.h"
 
 	"views.natvis"
 )
@@ -30,7 +30,7 @@ endif ()
 
 add_library(seidel_triangulator STATIC)
 target_sources(seidel_triangulator PRIVATE ${SeidelSources} PUBLIC ${SeidelHeaders})
-target_include_directories(seidel_triangulator PUBLIC "./")
+target_include_directories(seidel_triangulator PUBLIC "./src")
 target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_USE_SIGNED_INDEX)
 if (ENABLE_INTERNAL_TESTS)
 	target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_INTERNAL_TEST)
