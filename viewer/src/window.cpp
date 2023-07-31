@@ -90,7 +90,9 @@ struct
 
 int main()
 {
-  Vec2Set points = {{0, 2}, {0, 1}, {-1, 0}, {4, 0}, {4, 1}};
+  //Vec2Set points = {{67, 200},  {267, 315}, {170, 209}, {333, 200},
+  //                  {167, 173}, {107, 117}, {276, 66},  {58, 85}};
+  Vec2Set points = {{0, 0}, {0, -3}, {2, -3.5} ,{1, -2}, {1, -1}, {2, -.5}, {1, -.25}};
 
   ViewableTriangulator tri;
   tri.config.useGivenSeed = true;
