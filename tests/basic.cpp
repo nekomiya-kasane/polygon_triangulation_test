@@ -262,7 +262,7 @@ TEST(BasicTest, BoatCCWMergeRight2SameY)
   const auto &node18 = triangulator._nodes[18];
   EXPECT_NODE(node18, 18, Node::REGION, 9, Nil, Nil);
   const auto &node19 = triangulator._nodes[19];
-  EXPECT_NODE(node19, 19, Node::SEGMENT, 1, 22, 21);
+  EXPECT_NODE(node19, 19, Node::SEGMENT, 0, 22, 21);
   const auto &node20 = triangulator._nodes[20];
   EXPECT_NODE(node20, 20, Node::REGION, 6, Nil, Nil);
   const auto &node21 = triangulator._nodes[21];
