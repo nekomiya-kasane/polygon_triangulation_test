@@ -112,7 +112,12 @@ int main()
   camera.zoom     = 1.0f;
   SetTargetFPS(144);
 
-  Font font = LoadFontEx("assets/victor_mono.ttf", 64, 0, 0);
+  Font font = LoadFontEx("assets/victor_mono.ttf", 96, 0, 0);
+  if (!IsFontReady(font))
+  {
+    TRACE("Font not ready.");
+  }
+  tri.drawingConfig.font = font;
 
   while (!WindowShouldClose())  // Escape or exit button clicked
   {
@@ -157,7 +162,7 @@ int main()
           rlPopMatrix();
         }
 
-        states.drawGrid = GuiCheckBox(Rectangle{10, 40, 40, 40}, "DrawRect", states.drawGrid);
+        states.drawGrid = GuiCheckBox(Rectangle{10, 40, 20, 20}, " Draw grids", states.drawGrid);
 
         // draw the shape
         tri.SetOrigin({512, 384});
@@ -165,7 +170,6 @@ int main()
         Vec2 ori = (lt + rb) / 2, factor{0.8 * 1024. / (rb - lt).x, 0.8 * 768. / (rb - lt).y};
 
         tri.Draw(ori, factor);
-        //  DrawCircle(100, 100, 50, YELLOW);
 
         // draw rendering info
         DrawFPS(10, 10);
@@ -174,6 +178,8 @@ int main()
     }
     EndDrawing();
   }
+
+  UnloadFont(font);
 
   CloseWindow();
 }

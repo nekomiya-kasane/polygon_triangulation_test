@@ -38,3 +38,11 @@ target_link_libraries(
   raylib
   raygui
 )
+
+#add_custom_command(
+#	TARGET seidel_triangulation_viewer
+#	POST_BUILD  
+#	COMMAND ${CMAKE_COMMAND} -E copy "./assets" ${PROJECT_BINARY_DIR}
+#)
+
+file(COPY "assets" DESTINATION ${PROJECT_BINARY_DIR}/viewer)

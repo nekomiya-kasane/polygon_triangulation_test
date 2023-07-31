@@ -3,11 +3,14 @@
 #ifdef USE_EASYX
 #  include "easyx.h"
 #  include "graphics.h"
+#else
+#  include "raylib.h"
 #endif
 
 #include <iterator>
 #include <limits>
 #include <string>
+#include <sstream>
 
 ViewableTriangulator::~ViewableTriangulator()
 {
@@ -143,7 +146,138 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
     });
   }
 #else
+  if (!methods.vertexDrawer)
+  {
+    methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex, const std::string &label) {
+      // draw horizontal line LINESTYLE oldStyle;
+      VertexID id   = _vertices.GetIndex(&vertex);
+      Vector2 pt[2] = {{0, y(vertex.y)}, {1024, y(vertex.y)}};
 
+      const Region &leftRegion = _regions[_lowNeighbors[id].left];
+      if (!Infinite(leftRegion.left) && Valid(leftRegion.left))
+      {
+        pt[0].x = evalX(vertex.y, _segments[leftRegion.left]);
+      }
+      const Region &rightRegion = Valid(_lowNeighbors[id].right) ? _regions[_lowNeighbors[id].right]
+                                                                 : _regions[_lowNeighbors[id].left];
+      if (!Infinite(rightRegion.right) && Valid(leftRegion.right))
+      {
+        pt[1].x = evalX(vertex.y, _segments[rightRegion.right]);
+      }
+      DrawLineEx(pt[0], pt[1], 1, Fade(YELLOW, 0.35));
+
+      // draw points
+      DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, RED);
+      DrawCircleLines(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, WHITE);
+      DrawTextEx(drawingConfig.font, label.c_str(),
+                 Vector2{x(vertex.x) + drawingConfig.vertexRadius, y(vertex.y) + drawingConfig.vertexRadius},
+                 20, 0, RED);
+    });
+  }
+
+  if (!methods.segmentDrawer)
+  {
+    methods.segmentDrawer = new SegmentDrawer([this](const Segment &segment, const std::string &) {
+      const Vertex &highVertex = _vertices[segment.highVertex];
+      const Vertex &lowVertex  = _vertices[segment.lowVertex];
+      DrawLineEx(Vector2{x(highVertex.x), y(highVertex.y)}, Vector2{x(lowVertex.x), y(lowVertex.y)}, 2, BLUE);
+    });
+  }
+
+  if (!methods.regionDrawer)
+  {
+    methods.regionDrawer = new RegionDrawer([this](const Region &region, const std::string &label) {
+      float midX = 0, midY = 0;
+      double highY = 0, lowY = 0;
+
+      if (!Infinite(region.high))
+        highY = _vertices[region.high].y;
+      if (!Infinite(region.low))
+        lowY = _vertices[region.low].y;
+
+      auto color = region.depth % 2 == 1 ? YELLOW : GRAY;
+      if (region.depth != 0 || (!Infinite(region.left) && !Infinite(region.right)))
+      {
+        const Segment &left = _segments[region.left], &right = _segments[region.right];
+        const Vec2 ll = _vertices[left.lowVertex], lh = _vertices[left.highVertex],
+                   rl = _vertices[right.lowVertex], rh = _vertices[right.highVertex];
+        // if (highY == lowY)
+        //   return;
+
+        Vector2 pts[4] = {{evalX(lowY, left), y(lowY)},
+                          {evalX(lowY, right), y(lowY)},
+                          {evalX(highY, right), y(highY)},
+                          {evalX(highY, left), y(highY)}};
+
+        // degenerated
+
+        if (region.depth)
+        {
+          if (left.lowVertex == right.lowVertex)
+            DrawTriangle(pts[1], pts[2], pts[3], Fade(color, 0.3));
+          else if (left.highVertex == right.highVertex)
+            DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3));
+          // non-degenerated
+          else
+            DrawTriangleFan(pts, 4, Fade(color, 0.3));
+        }
+
+        midX = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+      }
+
+      // resolve midX
+      if (region.depth == 0)
+      {
+        if (Infinite(region.left))
+        {
+          if (Infinite(region.right))
+            midX = x(0);
+          else
+            midX = x((_vertices[_segments[region.right].highVertex].x +
+                      _vertices[_segments[region.right].lowVertex].x) /
+                     2) -
+                   50;
+        }
+        else if (Infinite(region.right))
+        {
+          midX = x((_vertices[_segments[region.left].highVertex].x +
+                    _vertices[_segments[region.left].lowVertex].x) /
+                   2) +
+                 50;
+        }
+      }
+
+      // resolve midY
+      if (Infinite(region.high))
+        midY = Infinite(region.low) ? 0 : y(lowY) - 50;
+      else if (Infinite(region.low))
+        midY = y(highY) + 50;
+      else
+        midY = y((lowY + highY) / 2.);
+
+      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20, 0, color);
+    });
+  }
+
+  if (!methods.triangleDrawer)
+  {
+    methods.triangleDrawer = new TriangleDrawer([this](const Triangle &tri, const std::string &) {
+      Vector2 pts[3];
+      pts[0].x = x(tri[0].x);
+      pts[0].y = y(tri[0].y);
+      pts[1].x = x(tri[1].x);
+      pts[1].y = y(tri[1].y);
+      pts[2].x = x(tri[2].x);
+      pts[2].y = y(tri[2].y);
+
+      DrawTriangleLines(pts[0], pts[1], pts[2], GREEN);
+    });
+  }
+
+  if (!methods.mountainDrawer)
+  {
+      // not needed currently.
+  }
 #endif
 
   size_t i = 0;
@@ -170,6 +304,10 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
   if (methods.vertexDrawer)
     for (const auto &vertex : _vertices)
       (*methods.vertexDrawer)(vertex, "v" + std::to_string(i++));
+
+  std::stringstream ss;
+  ss << "Triangles: " << std::to_string(_triangles.size()) << std::endl;
+  DrawTextEx(drawingConfig.font, ss.str().c_str(), {850, 8}, 24, 0, Fade(GREEN, 0.7));
 }
 
 void ViewableTriangulator::GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const
@@ -206,6 +344,7 @@ Mountains ViewableTriangulator::ExtractMountains() const
   return res;
 }
 
+#ifdef USE_EASYX
 int ViewableTriangulator::evalX(double iy, const Segment &seg) const
 {
   const Vec2 low = _vertices[seg.lowVertex], high = _vertices[seg.highVertex];
@@ -213,3 +352,12 @@ int ViewableTriangulator::evalX(double iy, const Segment &seg) const
     return static_cast<int>((low.x + high.x) / 2);
   return x((iy - low.y) / (high.y - low.y) * (high.x - low.x) + low.x);
 }
+#else
+float ViewableTriangulator::evalX(double iy, const Segment &seg) const
+{
+  const Vec2 low = _vertices[seg.lowVertex], high = _vertices[seg.highVertex];
+  if (low.y == high.y)
+    return (low.x + high.x) / 2;
+  return x((iy - low.y) / (high.y - low.y) * (high.x - low.x) + low.x);
+}
+#endif
