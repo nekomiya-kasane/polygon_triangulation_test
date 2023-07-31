@@ -22,6 +22,8 @@ using Depth     = short;
 constexpr AnyID INVALID_INDEX = -1, INFINITY_INDEX = -2, ROOT_REGION_ID = 0, ROOT_NODE_ID = 0;
 constexpr Depth INVALID_DEPTH = -1;
 
+#  pragma warning(push)
+#  pragma warning(disable : 26495)  // uninitialized on purpose
 struct Node
 {
   enum Type
@@ -39,6 +41,7 @@ struct Node
 
   NodeID left = INVALID_INDEX, right = INVALID_INDEX;
 };
+#  pragma warning(pop)
 
 struct Region
 {

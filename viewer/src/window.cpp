@@ -1,9 +1,10 @@
-﻿#include "easyx.h"
-#include "graphics.h"
-
-#include "viewable.h"
+﻿#include "viewable.h"
 
 #include <chrono>
+
+#ifdef USE_EASYX
+#  include "easyx.h"
+#  include "graphics.h"
 
 int main()
 {
@@ -71,3 +72,109 @@ int main()
   EndBatchDraw();
   closegraph();
 }
+#else
+#  include "raylib.h"
+
+#  include "raymath.h"
+#  include "rlgl.h"
+
+#  define RAYGUI_IMPLEMENTATION
+#  include "raygui.h"  // Required for GUI controls
+
+struct
+{
+  bool drawGrid = false;
+} states;
+
+int main()
+{
+  Vec2Set points = {{0, 2}, {0, 1}, {-1, 0}, {4, 0}, {4, 1}};
+
+  ViewableTriangulator tri;
+  tri.config.useGivenSeed = true;
+  tri.config.seed         = 1;
+
+  tri.AddPolygon(points, true);
+  tri.Build();
+  tri.Triangulate();
+
+  Vec2 lt, rb;
+  tri.GetBoundingBox(lt, rb);
+
+  // visualization
+  const int screenWidth  = 1024;
+  const int screenHeight = 768;
+
+  InitWindow(screenWidth, screenHeight, "Seidel Algorithm Visualizer");
+  SetWindowMinSize(screenWidth, screenHeight);
+
+  Camera2D camera = {0};
+  camera.zoom     = 1.0f;
+  SetTargetFPS(144);
+
+  Font font = LoadFontEx("assets/victor_mono.ttf", 64, 0, 0);
+
+  while (!WindowShouldClose())  // Escape or exit button clicked
+  {
+    // move canvas
+    if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE))
+    {
+      Vector2 delta = GetMouseDelta();
+      delta         = Vector2Scale(delta, -1.0f / camera.zoom);
+
+      camera.target = Vector2Add(camera.target, delta);
+    }
+
+    // zoom
+    float wheel = GetMouseWheelMove();
+    if (wheel != 0)
+    {
+      Vector2 mouseWorldPos     = GetScreenToWorld2D(GetMousePosition(), camera);
+      camera.offset             = GetMousePosition();
+      camera.target             = mouseWorldPos;
+      const float zoomIncrement = 0.125f;
+      camera.zoom += (wheel * zoomIncrement);
+      if (camera.zoom < zoomIncrement)
+        camera.zoom = zoomIncrement;
+    }
+
+    // draw
+    BeginDrawing();
+    {
+      ClearBackground(BLACK);
+
+      BeginMode2D(camera);
+      {
+        // draw grid
+        if (states.drawGrid)
+        {
+          rlPushMatrix();
+          {
+            rlTranslatef(0, 25 * 50, 0);
+            rlRotatef(90, 1, 0, 0);
+            DrawGrid(100, 50);
+          }
+          rlPopMatrix();
+        }
+
+        states.drawGrid = GuiCheckBox(Rectangle{10, 40, 40, 40}, "DrawRect", states.drawGrid);
+
+        // draw the shape
+        tri.SetOrigin({512, 384});
+
+        Vec2 ori = (lt + rb) / 2, factor{0.8 * 1024. / (rb - lt).x, 0.8 * 768. / (rb - lt).y};
+
+        tri.Draw(ori, factor);
+        //  DrawCircle(100, 100, 50, YELLOW);
+
+        // draw rendering info
+        DrawFPS(10, 10);
+      }
+      EndMode2D();
+    }
+    EndDrawing();
+  }
+
+  CloseWindow();
+}
+#endif

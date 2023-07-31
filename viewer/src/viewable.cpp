@@ -1,7 +1,9 @@
 #include "viewable.h"
 
-#include "easyx.h"
-#include "graphics.h"
+#ifdef USE_EASYX
+#  include "easyx.h"
+#  include "graphics.h"
+#endif
 
 #include <iterator>
 #include <limits>
@@ -9,8 +11,6 @@
 
 ViewableTriangulator::~ViewableTriangulator()
 {
-  Triangulator::~Triangulator();
-
   delete methods.vertexDrawer;
   delete methods.regionDrawer;
   delete methods.segmentDrawer;
@@ -31,6 +31,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
   _centroid = centroid;
   _factor   = factor;
 
+#ifdef USE_EASYX
   if (!methods.vertexDrawer)
   {
     methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex, const std::string &label) {
@@ -141,6 +142,9 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       delete[] pts;
     });
   }
+#else
+
+#endif
 
   size_t i = 0;
   if (methods.mountainDrawer)
