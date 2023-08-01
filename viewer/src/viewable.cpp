@@ -165,7 +165,8 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 #else
   if (!methods.vertexDrawer)
   {
-    methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex, const std::string &label) {
+    methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex, const std::string &label,
+                                                   Color color, bool overrideColor) {
       // draw horizontal line LINESTYLE oldStyle;
       VertexID id   = _vertices.GetIndex(&vertex);
       Vector2 pt[2] = {{0, y(vertex.y)}, {8192, y(vertex.y)}};
@@ -184,28 +185,34 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       DrawLineEx(pt[0], pt[1], 1.f, Fade(YELLOW, 0.35f));
 
       // draw points
-      DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, RED);
+      DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, overrideColor ? color : RED);
       DrawCircleLines(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, WHITE);
       DrawTextEx(drawingConfig.font, label.c_str(),
                  Vector2{x(vertex.x) + drawingConfig.vertexRadius, y(vertex.y) + drawingConfig.vertexRadius},
-                 20.f, 0.f, RED);
+                 20.f, 0.f, overrideColor ? color : RED);
     });
   }
 
   if (!methods.segmentDrawer)
   {
-    methods.segmentDrawer = new SegmentDrawer([this](const Segment &segment, const std::string &label) {
-      const Vertex &highVertex = _vertices[segment.highVertex];
-      const Vertex &lowVertex  = _vertices[segment.lowVertex];
-      auto midX = (highVertex.x + lowVertex.x) / 2.f, midY = (highVertex.y + lowVertex.y) / 2.f;
-      DrawLineEx(Vector2{x(highVertex.x), y(highVertex.y)}, Vector2{x(lowVertex.x), y(lowVertex.y)}, 2, BLUE);
-      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{x(midX), y(midY)}, 20.f, 0.f, BLUE);
-    });
+    methods.segmentDrawer = new SegmentDrawer(
+        [this](const Segment &segment, const std::string &label, Color color, bool overrideColor) {
+          const Vertex &highVertex = _vertices[segment.highVertex];
+          const Vertex &lowVertex  = _vertices[segment.lowVertex];
+          auto midX = (highVertex.x + lowVertex.x) / 2.f, midY = (highVertex.y + lowVertex.y) / 2.f;
+          DrawLineEx(Vector2{x(highVertex.x), y(highVertex.y)}, Vector2{x(lowVertex.x), y(lowVertex.y)}, 2,
+                     overrideColor ? color : BLUE);
+          DrawTextEx(drawingConfig.font, label.c_str(), Vector2{x(midX), y(midY)}, 20.f, 0.f,
+                     overrideColor ? color : BLUE);
+        });
   }
 
   if (!methods.regionDrawer)
   {
-    methods.regionDrawer = new RegionDrawer([this](const Region &region, const std::string &label) {
+    methods.regionDrawer = new RegionDrawer([this](const Region &region, const std::string &label,
+                                                   Color color, bool overrideColor) {
+      // caution: here highY is projected to the screen coordinate system, hence numerically, highY <=
+      // lowY
       float midX = 0, midY = 0;
       double highY = 0, lowY = 0, lowHighX = 0, lowLowX = 0, highLowX = 0, highHighX = 0;
 
@@ -249,14 +256,16 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       assert(midY >= 0 && midY <= _box.y);
 
       // highlight regions containing the cursor
-      auto color = (region.depth != INVALID_DEPTH && (region.depth % 2 == 1)) ? YELLOW : GRAY;
+      color = overrideColor ? color
+                            : ((region.depth != INVALID_DEPTH && (region.depth % 2 == 1)) ? YELLOW : GRAY);
       if (_focus.y <= (double)(int)lowY && _focus.y >= (double)(int)highY)
       {
         auto left  = evalX(_focus.y, {lowHighX, lowY}, {highHighX, highY}),
              right = evalX(_focus.y, {lowLowX, lowY}, {highLowX, highY});
-        assert(right >= left);
+        // assert(right - left > -10);  // strange
         if (_focus.x >= left && _focus.x <= right)
-          color = PURPLE;
+          // color = PURPLE;
+          indicators.curRegionID = _regions.GetIndex(&region);
       }
 
       // background
@@ -270,63 +279,101 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   if (!methods.triangleDrawer)
   {
-    methods.triangleDrawer = new TriangleDrawer([this](const Triangle &tri, const std::string &label) {
-      Vector2 pts[3];
-      pts[0].x = x(tri[0].x);
-      pts[0].y = y(tri[0].y);
-      pts[1].x = x(tri[1].x);
-      pts[1].y = y(tri[1].y);
-      pts[2].x = x(tri[2].x);
-      pts[2].y = y(tri[2].y);
+    methods.triangleDrawer = new TriangleDrawer(
+        [this](const Triangle &tri, const std::string &label, Color color, bool overrideColor) {
+          Vector2 pts[3];
+          pts[0].x = x(tri[0].x);
+          pts[0].y = y(tri[0].y);
+          pts[1].x = x(tri[1].x);
+          pts[1].y = y(tri[1].y);
+          pts[2].x = x(tri[2].x);
+          pts[2].y = y(tri[2].y);
 
-      float midX = (pts[0].x + pts[1].x + pts[2].x) / 3, midY = (pts[0].y + pts[1].y + pts[2].y) / 3;
+          float midX = (pts[0].x + pts[1].x + pts[2].x) / 3, midY = (pts[0].y + pts[1].y + pts[2].y) / 3;
 
-      DrawTriangleLines(pts[0], pts[1], pts[2], GREEN);
-      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20, 0, GREEN);
-    });
+          DrawTriangleLines(pts[0], pts[1], pts[2], overrideColor ? color : GREEN);
+          DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20, 0,
+                     overrideColor ? color : GREEN);
+        });
   }
 
   if (!methods.mountainDrawer)
   {
-    methods.mountainDrawer = new MountainDrawer([this](const Mountain &mountain, const std::string &label) {
-      for (Mountain::size_type i = 0; i < mountain.size() - 1; ++i)
-        DrawLineEx(Vector2{x(_vertices[mountain[i]].x), y(_vertices[mountain[i]].y)},
-                   Vector2{x(_vertices[mountain[i + 1]].x), y(_vertices[mountain[i + 1]].y)}, 2,
-                   Fade(PURPLE, 0.3f));
-      DrawLineEx(Vector2{x(_vertices[mountain.back()].x), y(_vertices[mountain.back()].y)},
-                 Vector2{x(_vertices[mountain[0]].x), y(_vertices[mountain[0]].y)}, 2, Fade(PURPLE, 0.3f));
-    });
+    methods.mountainDrawer = new MountainDrawer(
+        [this](const Mountain &mountain, const std::string &label, Color color, bool overrideColor) {
+          for (Mountain::size_type i = 0; i < mountain.size() - 1; ++i)
+            DrawLineEx(Vector2{x(_vertices[mountain[i]].x), y(_vertices[mountain[i]].y)},
+                       Vector2{x(_vertices[mountain[i + 1]].x), y(_vertices[mountain[i + 1]].y)}, 2,
+                       Fade(overrideColor ? color : PURPLE, 0.3f));
+          DrawLineEx(Vector2{x(_vertices[mountain.back()].x), y(_vertices[mountain.back()].y)},
+                     Vector2{x(_vertices[mountain[0]].x), y(_vertices[mountain[0]].y)}, 2,
+                     Fade(overrideColor ? color : PURPLE, 0.3f));
+        });
   }
 #endif
 
+  indicators.curRegionID = indicators.curSegmentID = indicators.curVertexID = INVALID_INDEX;
+
+  // draw shapes
   size_t i = 0;
   if (methods.mountainDrawer)
     for (const auto &mountain : _mountains)
-      (*methods.mountainDrawer)(mountain.first, "M" + std::to_string(i++));
+      (*methods.mountainDrawer)(mountain.first, "M" + std::to_string(i++), WHITE, false);
 
   i = 0;
   if (methods.regionDrawer)
     for (const auto &region : _regions)
-      (*methods.regionDrawer)(region, "S" + std::to_string(i++));
+      (*methods.regionDrawer)(region, "S" + std::to_string(i++), WHITE, false);
 
   i = 0;
   if (methods.triangleDrawer)
     for (const auto &triangle : _triangles)
-      (*methods.triangleDrawer)(triangle, "T" + std::to_string(i++));
+      (*methods.triangleDrawer)(triangle, "T" + std::to_string(i++), WHITE, false);
 
   i = 0;
   if (methods.segmentDrawer)
     for (const auto &segmentID : _permutation)
-      (*methods.segmentDrawer)(_segments[segmentID], "e" + std::to_string(segmentID));
+      (*methods.segmentDrawer)(_segments[segmentID], "e" + std::to_string(segmentID), WHITE, false);
 
   i = 0;
   if (methods.vertexDrawer)
     for (const auto &vertex : _vertices)
-      (*methods.vertexDrawer)(vertex, "v" + std::to_string(i++));
+      (*methods.vertexDrawer)(vertex, "v" + std::to_string(i++), WHITE, false);
 
+  // write info
   std::stringstream ss;
-  ss << "Triangles: " << std::to_string(_triangles.size()) << std::endl;
+  ss << "V: " << _vertices.Size() << " T: " << _triangles.size() << " R: " << _regions.Size() << "/"
+     << _regions.Capability() << " N: " << _nodes.Size() << "/" << _nodes.Capability() << std::endl;
   DrawTextEx(drawingConfig.font, ss.str().c_str(), {850.f, 8.f}, 24.f, 0.f, Fade(GREEN, 0.7f));
+
+  // resolve indicators
+  if (Valid(indicators.curRegionID) && !Infinite(indicators.curRegionID))
+  {
+    Region &region = _regions[indicators.curRegionID];
+    if (methods.regionDrawer)
+    {
+      for (const auto neighborID :
+           {region.highNeighbors[0], region.highNeighbors[1], region.lowNeighbors[0], region.lowNeighbors[1]})
+        if (Valid(neighborID) && !Infinite(neighborID))
+          (*methods.regionDrawer)(_regions[neighborID], "S" + std::to_string(neighborID), PURPLE, true);
+      (*methods.regionDrawer)(region, "S" + std::to_string(indicators.curRegionID), Color(255, 145, 40),
+                              true);
+    }
+    if (methods.segmentDrawer)
+    {
+      if (!Infinite(region.left))
+        (*methods.segmentDrawer)(_segments[region.left], "e" + std::to_string(region.left), WHITE, true);
+      if (!Infinite(region.right))
+        (*methods.segmentDrawer)(_segments[region.right], "e" + std::to_string(region.right), WHITE, true);
+    }
+    if (methods.vertexDrawer)
+    {
+      if (!Infinite(region.low) && Valid(region.low))
+        (*methods.vertexDrawer)(_vertices[region.low], "v" + std::to_string(region.low), WHITE, true);
+      if (!Infinite(region.high) && Valid(region.low))
+        (*methods.vertexDrawer)(_vertices[region.high], "v" + std::to_string(region.high), WHITE, true);
+    }
+  }
 }
 #pragma warning(pop)
 
@@ -357,7 +404,7 @@ Triangles ViewableTriangulator::Triangulate() const
 
   // for generating test cases
 #ifdef _DEBUG
-  if (config.printData)
+  if (config.printCase)
   {
     size_t i = 0;
     std::cout << "\n// check the trapezoid map" << std::endl;
@@ -433,6 +480,6 @@ float ViewableTriangulator::evalX(double iy, const Vec2 &low, const Vec2 &high) 
 {
   if (low.y == high.y)
     return static_cast<float>((low.x + high.x) / 2);
-  return (iy - low.y) / (high.y - low.y) * (high.x - low.x) + low.x;
+  return static_cast<float>((iy - low.y) / (high.y - low.y) * (high.x - low.x) + low.x);
 }
 #endif

@@ -27,11 +27,16 @@ public:
   virtual Triangles Triangulate() const;
   virtual Mountains ExtractMountains() const;
 
-  using VertexDrawer   = std::function<void(const Vertex &, const std::string &)>;
-  using SegmentDrawer  = std::function<void(const Segment &, const std::string &)>;
-  using RegionDrawer   = std::function<void(const Region &, const std::string &)>;
-  using MountainDrawer = std::function<void(const Mountain &, const std::string &)>;
-  using TriangleDrawer = std::function<void(const Triangle &, const std::string &)>;
+  using VertexDrawer =
+      std::function<void(const Vertex &, const std::string &, Color color, bool overrideColor)>;
+  using SegmentDrawer =
+      std::function<void(const Segment &, const std::string &, Color color, bool overrideColor)>;
+  using RegionDrawer =
+      std::function<void(const Region &, const std::string &, Color color, bool overrideColor)>;
+  using MountainDrawer =
+      std::function<void(const Mountain &, const std::string &, Color color, bool overrideColor)>;
+  using TriangleDrawer =
+      std::function<void(const Triangle &, const std::string &, Color color, bool overrideColor)>;
 
   struct
   {
@@ -44,7 +49,15 @@ public:
 
   struct
   {
+    VertexID curVertexID   = INVALID_INDEX;
+    SegmentID curSegmentID = INVALID_INDEX;
+    RegionID curRegionID   = INVALID_INDEX;
+  } indicators;
+
+  struct
+  {
     float vertexRadius = 4;
+    Color color;
 #ifndef USE_EASYX
     Font font;
 #endif

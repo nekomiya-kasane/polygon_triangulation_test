@@ -97,26 +97,27 @@ bool ResolveConfig(Triangulator &tri)
   States oldStates               = states;
   Triangulator::Config oldConfig = tri.config;
   tri.config.printData   = GuiCheckBox(Rectangle{10, 40, 20, 20}, " Print data", tri.config.printData);
-  states.drawGrid        = GuiCheckBox(Rectangle{10, 70, 20, 20}, " Draw grids", states.drawGrid);
-  tri.config.incremental = GuiCheckBox(Rectangle{10, 100, 20, 20}, " Incremental", tri.config.incremental);
+  tri.config.printCase   = GuiCheckBox(Rectangle{10, 70, 20, 20}, " Print case", tri.config.printCase);
+  states.drawGrid        = GuiCheckBox(Rectangle{10, 100, 20, 20}, " Draw grids", states.drawGrid);
+  tri.config.incremental = GuiCheckBox(Rectangle{10, 130, 20, 20}, " Incremental", tri.config.incremental);
   if (tri.config.incremental)
   {
     tri.config.assignDepth = tri.config.generateMountains = tri.config.triangulation = false;
-    tri.config.maxSegment = GuiSliderBar(Rectangle{10, 130, 100, 20}, NULL, " Segments",
+    tri.config.maxSegment = GuiSliderBar(Rectangle{10, 160, 100, 20}, NULL, " Segments",
                                          tri.config.maxSegment, 0, tri._segments.Size());
     DrawText(std::to_string(tri.config.maxSegment).c_str(), 175, 133, 14, GRAY);
   }
   else
   {
-    tri.config.assignDepth = GuiCheckBox(Rectangle{10, 130, 20, 20}, " Depth", tri.config.assignDepth);
+    tri.config.assignDepth = GuiCheckBox(Rectangle{10, 160, 20, 20}, " Depth", tri.config.assignDepth);
     if (tri.config.assignDepth)
     {
       tri.config.generateMountains =
-          GuiCheckBox(Rectangle{10, 160, 20, 20}, " Mountains", tri.config.generateMountains);
+          GuiCheckBox(Rectangle{10, 190, 20, 20}, " Mountains", tri.config.generateMountains);
       if (tri.config.generateMountains)
       {
         tri.config.triangulation =
-            GuiCheckBox(Rectangle{10, 190, 20, 20}, " Triangles", tri.config.triangulation);
+            GuiCheckBox(Rectangle{10, 220, 20, 20}, " Triangles", tri.config.triangulation);
       }
       else
       {
@@ -139,7 +140,8 @@ int main()
 {
   // Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0,
   // 40}};
-  Vec2Set points = {{0, 0}, {0, -12}, {8, -14}, {4, -8}, {4, -4}, {8, -2}, {4, -1}};
+  Vec2Set points = {{2, 661},   {87, 488},  {113, 997}, {709, 935}, {770, 831},
+                    {392, 181}, {273, 256}, {164, 46},  {13, 299}};
 
   // Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
   //                   {524, 752}, {480, 54},  {327, 91},  {276, 168}};
@@ -214,8 +216,9 @@ int main()
           rlPopMatrix();
         }
 
-        states.generateRandom =
-            GuiCheckBox(Rectangle{10, screenHeight - 30, 20, 20}, " Generate random", states.generateRandom);
+        states.generateRandom = GuiCheckBox(
+            Rectangle{10, screenHeight - 30, 20, 20},
+            (" Generate random " + std::to_string(states.generateRandomSize)).c_str(), states.generateRandom);
         states.generateRandomSize = GuiSliderBar(Rectangle{10, screenHeight - 60, 100, 20}, NULL,
                                                  " Point count", states.generateRandomSize, 0, 20);
         DrawTextEx(font, (std::to_string(int(mousePos.x)) + ", " + std::to_string(int(mousePos.y))).c_str(),

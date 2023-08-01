@@ -132,6 +132,12 @@ void TrapezoidMapP::Build()
   if (config.printData)
   {
     size_t i = 0;
+    std::cout << "\nVertices: " << std::endl;
+    for (const auto &vertex : _vertices)
+    {
+      std::cout << i++ << "{" << (int)vertex.x << ", " << (int)vertex.y << "} ";
+    }
+    i = 0;
     std::cout << "\nNodes: " << std::endl;
     for (const auto &node : _nodes)
     {
@@ -161,7 +167,8 @@ void TrapezoidMapP::Build()
 #endif
 }
 
-void TrapezoidMapP::Reset() {
+void TrapezoidMapP::Reset()
+{
   _vertices.Reset();
   _segments.Reset();
   _prevVertices.Reset();
@@ -456,7 +463,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       break;
     }
 
-    // occasion 1:                      occasion 2:
+    // occasion 1:    .                 occasion 2:                 .
     //   |-.-.-.-.\---*------------|      |-.-.-.-.\----------------*------------|
     //   |  High   \               |      |  High   \               |            |
     //   | (Merge)  \     Low      |      | (Merge)  \     Low      |            |
@@ -480,6 +487,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       break;
     }
 
+    //               .                       .
     //   |-----------*-----/-.-.-.-|      |--*----------------/-.-.-.-|
     //   |    High        /  Low   |      |  |        High   /  Low   |
     //   |               / (Merge) |  or  |  |              / (Merge) |
@@ -608,28 +616,55 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
     int res = Higher(originalRegion.low, segment.highVertex, segment.lowVertex) ? 1 : -1;
     if (res == 1)  // to low right
     {
-      //   |           / (new)|     \                  / (new)|
-      //   |          /  low  |      \                /  low  |
-      //   |         /  merge |       \              /  merge |
-      //   *--------.vvvvvvvvv|  or    \---*--------.vvvvvvvvv|
-      //  /  next  .          |         \    next  .          |
-      // /        .           |          \        .           |
+      // clang-format off
+      // occasion 1:              occasion 2:                 occasion 3:                occasion 4:
+      //   |           /      |                    /      |                    /      |    .  |           /      | if mergeType = -1
+      //   |   high   /  low  |        high       /  low  |         high      /  low  |     . |   high   /  low  |    then low is old
+      //   |         /  merge |                  /  merge |                  /  merge |      .|         /  merge | if mergeType = 0
+      //   *--------+vvvvvvvvv|     ---*--------+vvvvvvvvv|     ---*--------+vvvvvvvvv|    ---*--------+vvvvvvvvv|    then low is newed
+      //  /  next  +          |          next  +          |       .|  next +          |         next  +          |
+      // /        +           |               +           |      . |      +           |              +           |
+      // clang-format on
+
+      if (_mergeType == -1)
+      // condition not necessary, but if _mergeType != -1, then the following items are not changed
+      {
+        Region &lowNeiRegionLow = _regions[originalRegion.lowNeighbors[1]];
+        if (lowNeiRegionLow.highNeighbors[0] == lowNeiRegionLow.highNeighbors[1])  // occasion 1/2/3
+          lowNeiRegionLow.highNeighbors[0] = highRegionID;
+        if (originalRegion.lowNeighbors[0] != originalRegion.lowNeighbors[1]) // occasion 3
+        {
+          Region &lowNeiRegionHigh = _regions[originalRegion.lowNeighbors[0]];
+          lowNeiRegionHigh.highNeighbors[0] = lowNeiRegionHigh.highNeighbors[1] = highRegionID;
+        }
+
+        lowNeiRegionLow.highNeighbors[1] = highRegionID;
+
+        highRegion.lowNeighbors[0]    = originalRegion.lowNeighbors[0];
+        highRegion.lowNeighbors[1]    = originalRegion.lowNeighbors[1];
+      }
 
       _nextRegion       = originalRegion.lowNeighbors[1];
       _tmpRegionToMerge = lowRegionID;
       _mergeType        = 1;  // merge low subregion
 
+      // update current region
       lowRegion.lowNeighbors[0] = lowRegion.lowNeighbors[1] = originalRegion.lowNeighbors[1];
+      highRegion.low                                        = originalRegion.low;
     }
     else
     {
+      // clang-format off
       // occasion 1:                     occasion 2:                     occasion 3:
-      //   | (old) \   （new)   |           | (old) \   （new)   |           | (old) \      （new)
-      //   |  high  \   low    |           |  high  \   low    |           |  high  \      low
-      //   |  merge  \         |           |  merge  \         |           |  merge  \             
-      //   |vvvvvvvvvv.--------*     or    |vvvvvvvvvv.--------*---        |vvvvvvvvvv.------*----
-      //   |           .        \          |           .                   |           .     |
-      //   |            .        \         |            .                  |            .    |
+      //   | (old) \   （new)   |           | (old) \   （new)   |  .        | (old) \      （new)      | (old) \      （new)
+      //   |  high  \   low    |           |  high  \   low    | .         |  high  \      low       |  high  \      low
+      //   |  merge  \         |           |  merge  \         |.          |  merge  \               |  merge  \            
+      //   |vvvvvvvvvv+--------*     or    |vvvvvvvvvv+--------*---        |vvvvvvvvvv+------*----   |vvvvvvvvvv+------*----
+      //   |           +        \          |           +                   |           +     |.      |           +     
+      //   |            +        \         |            +                  |            +    | .     |            +
+      // clang-format on
+
+      // if (_mergeType == 1) needed？
 
       _nextRegion       = originalRegion.lowNeighbors[0];
       _tmpRegionToMerge = highRegionID;
@@ -658,7 +693,7 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
       lowRegion.lowNeighbors[0]  = originalRegion.lowNeighbors[0];
       lowRegion.lowNeighbors[1]  = originalRegion.lowNeighbors[1];
       lowRegion.low              = originalRegion.low;
-      highRegion.lowNeighbors[1] = highRegion.lowNeighbors[0];
+      highRegion.lowNeighbors[1] = highRegion.lowNeighbors[0]; // needed?
     }
     return res;
   }

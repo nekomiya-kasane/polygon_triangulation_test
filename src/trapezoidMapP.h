@@ -38,6 +38,7 @@ public:
     // for debugging
     bool incremental        = false;
     bool printData          = true;
+    bool printCase          = false;
     bool assignDepth        = true;
     bool generateMountains  = true;
     bool triangulation      = true;
