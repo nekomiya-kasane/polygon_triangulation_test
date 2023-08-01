@@ -16,6 +16,7 @@ public:
   ~ViewableTriangulator();
 
   void SetOrigin(Vec2 origin);
+  void SetBox(Vec2 box);
   void Draw(Vec2 origin, Vec2 factor);
   void GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const;
 
@@ -51,7 +52,7 @@ protected:
   Mountains _mountains;
   Triangles _triangles;
 
-  Vec2 _centroid, _origin, _factor;
+  Vec2 _centroid, _origin, _factor, _box;
 
 #ifdef USE_EASYX
   inline int x(double ix) const { return static_cast<int>((ix - _centroid.x) * _factor.x + _origin.x); }

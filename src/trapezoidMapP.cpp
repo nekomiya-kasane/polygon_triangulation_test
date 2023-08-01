@@ -161,7 +161,15 @@ void TrapezoidMapP::Build()
 #endif
 }
 
-void TrapezoidMapP::Reset()
+void TrapezoidMapP::Reset() {
+  _vertices.Reset();
+  _segments.Reset();
+  _prevVertices.Reset();
+  _endVertices.Reset();
+  ClearCache();
+}
+
+void TrapezoidMapP::ClearCache()
 {
   _nodes.Reset();
   _regions.Reset();

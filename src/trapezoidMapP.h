@@ -22,7 +22,9 @@ class TrapezoidMapP
 public:
   void AddPolygon(const Vec2Set &points, bool compactPoints = false);
   void Build();
+
   void Reset();
+  void ClearCache();
 
   struct Config
   {

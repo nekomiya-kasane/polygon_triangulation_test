@@ -29,6 +29,8 @@ set(ViewerSources
 	"src/window.cpp"
 	"src/viewable.h"
 	"src/viewable.cpp"
+	"src/polygon_generator.h"
+	"src/polygon_generator.cpp"
 )
 
 add_executable(seidel_triangulation_viewer ${ViewerSources})

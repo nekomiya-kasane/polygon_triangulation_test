@@ -1,4 +1,5 @@
-﻿#include "viewable.h"
+﻿#include "polygon_generator.h"
+#include "viewable.h"
 
 #include <chrono>
 #include <cstring>
@@ -86,7 +87,9 @@ int main()
 
 struct States
 {
-  bool drawGrid  = false;
+  bool drawGrid = false;
+  bool generateRandom = 0;
+  int generateRandomSize = 8;
 } states;
 
 bool ResolveConfig(Triangulator &tri)
@@ -99,8 +102,8 @@ bool ResolveConfig(Triangulator &tri)
   if (tri.config.incremental)
   {
     tri.config.assignDepth = tri.config.generateMountains = tri.config.triangulation = false;
-    tri.config.maxSegment =
-        GuiSliderBar(Rectangle{10, 130, 100, 20}, NULL, " Segments", tri.config.maxSegment, 0, tri._segments.Size());
+    tri.config.maxSegment = GuiSliderBar(Rectangle{10, 130, 100, 20}, NULL, " Segments",
+                                         tri.config.maxSegment, 0, tri._segments.Size());
     DrawText(std::to_string(tri.config.maxSegment).c_str(), 175, 133, 14, GRAY);
   }
   else
@@ -134,19 +137,17 @@ bool ResolveConfig(Triangulator &tri)
 
 int main()
 {
-  Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0, 40}};
-  // Vec2Set points = {{0, 0}, {0, -12}, {8, -14} ,{4, -8}, {4, -4}, {8, -2}, {4, -1}};
+  // Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0,
+  // 40}};
+  Vec2Set points = {{0, 0}, {0, -12}, {8, -14} ,{4, -8}, {4, -4}, {8, -2}, {4, -1}};
+
+  //Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
+  //                  {524, 752}, {480, 54},  {327, 91},  {276, 168}};
 
   ViewableTriangulator tri;
   tri.config.useGivenSeed = true;
   tri.config.seed         = 1;
-
-  tri.AddPolygon(points, true);
-  tri.Build();
-  tri.Triangulate();
-
-  Vec2 lt, rb;
-  tri.GetBoundingBox(lt, rb);
+  tri.config.incremental  = true;
 
   // visualization
   const int screenWidth  = 1920;
@@ -166,6 +167,8 @@ int main()
   }
   tri.drawingConfig.font = font;
 
+  Vec2 lt, rb;
+  bool first = true;
   while (!WindowShouldClose())  // Escape or exit button clicked
   {
     // move canvas
@@ -209,15 +212,36 @@ int main()
           rlPopMatrix();
         }
 
-        if (ResolveConfig(tri))
+        
+        states.generateRandom =
+            GuiCheckBox(Rectangle{10, screenHeight - 30, 20, 20}, " Generate random", states.generateRandom);
+        states.generateRandomSize = GuiSliderBar(Rectangle{10, screenHeight - 60, 100, 20}, NULL,
+                                                 " Point count", states.generateRandomSize, 0, 20);
+
+        if (states.generateRandom)
+        {
+          points = PolygonGenerator::GenerateRandomPolygon(states.generateRandomSize);
+        }
+        if (first || states.generateRandom)
         {
           tri.Reset();
+          tri.AddPolygon(points, true);
+          tri.GetBoundingBox(lt, rb);
+        }
+
+        if (ResolveConfig(tri) || first || states.generateRandom)
+        {
+          tri.ClearCache();
           tri.Build();
           tri.Triangulate();
+
+          first = false;
+          states.generateRandom = false;
         }
 
         // draw the shape
         tri.SetOrigin({screenWidth / 2, screenHeight / 2});
+        tri.SetBox({screenWidth, screenHeight});
 
         Vec2 ori = (lt + rb) / 2, factor{0.8 * screenWidth / (rb - lt).x, 0.8 * screenHeight / (rb - lt).y};
 
