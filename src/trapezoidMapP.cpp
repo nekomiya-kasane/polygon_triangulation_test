@@ -61,6 +61,9 @@ void TrapezoidMapP::Build()
     std::shuffle(_permutation.begin(), _permutation.end(), g);
   }
 
+  for (const auto ID : _permutation)
+    std::cout << ID << std::endl;
+
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
   _nodes.Reserve(_vertices.Size() * 3 + _segments.Size() * 3 + 6);
   _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 6);

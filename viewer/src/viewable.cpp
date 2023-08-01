@@ -41,6 +41,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 #ifdef USE_EASYX
   if (!methods.vertexDrawer)
   {
+
     methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex, const std::string &label) {
       // draw horizontal line
       LINESTYLE oldStyle;

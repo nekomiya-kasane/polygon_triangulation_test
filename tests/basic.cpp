@@ -310,15 +310,6 @@ TEST(BasicTest, BoatCCWMergeRight2SameY)
   EXPECT_EQ(results.size(), 3);
 }
 
-// TEST(BasicTest, BoatCCWMergeLeft2SameYs)
-//{
-//   // Vec2Set points = {{-1, -1}, {0, 0}, {-1, 1}, {10, 0}, {10, -1}};
-//   // CheckBoatCCWMergeLeft(points);
-//   CheckBoatCCWMergeRight(points);
-// }
-//
-// void CheckBoatCCWMergeRight(const Vec2Set &points) {}
-
 TEST(BasicTest, BoatCCWMergeLeft)
 {
   Vec2Set points = {{53, 131}, {122, 238}, {204, 167}, {239, 269}, {93, 353}};
@@ -523,4 +514,9 @@ TEST(BasicTest, ArrowSameYDiffX)
   EXPECT_REGION(s7, 15, 3, 2, 2, 1, Nil, Nil, 8, 8, 1);
   const auto &s8 = triangulator._regions[8];
   EXPECT_REGION(s8, 18, 1, 3, 0, 1, 1, 7, Nil, Nil, 1);
+}
+
+TEST(BasicTest, LongLeftMerge)
+{
+
 }

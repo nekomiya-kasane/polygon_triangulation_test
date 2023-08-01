@@ -283,7 +283,8 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
   //       if the neighboring vertex is not an endpoint of the base, and was made convex by cutting
   //       off the ear, then add this neighbor to the list
 
-  if (mountain.size() == 3)
+  auto m = mountain.size();
+  if (m == 3)
   // degenerated mountain
   {
     out.push_back(Triangle{_vertices[mountain[0]], _vertices[mountain[1]], _vertices[mountain[2]]});
@@ -291,17 +292,16 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
   }
 
   std::vector<unsigned int> prevs, nexts, current;
-  prevs.reserve(mountain.size());
-  nexts.reserve(mountain.size());
-  unsigned int n = static_cast<unsigned int>(mountain.size());
+  prevs.reserve(m);
+  nexts.reserve(m);
 
-  for (unsigned int i = 0; i < n; ++i)
+  for (unsigned int i = 0; i < m; ++i)
   {
-    prevs.push_back(i ? i - 1 : n - 1);
-    nexts.push_back(i == n - 1 ? 0 : i + 1);
+    prevs.push_back(i ? i - 1 : m - 1);
+    nexts.push_back(i == m - 1 ? 0 : i + 1);
   }
 
-  for (unsigned int i = 1; i < n - 1; ++i)
+  for (unsigned int i = 1; i < m - 1; ++i)
   // find all convex vertices
   // first & last are vertices from the base segment, we don't consider them
   {
@@ -313,10 +313,17 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
   assert(!current.empty());
 
   unsigned int cur = 0;
+  unsigned int n = static_cast<unsigned int>(m);
   while (n-- >= 3)
   {
     // get cut this ear
     cur = current.back();
+
+    if (!Valid(prevs[cur]))
+    {
+      current.pop_back();
+      continue;
+    }
 
     VertexID prev = prevs[cur], next = nexts[cur];
 
@@ -335,12 +342,13 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
     current.pop_back();
 
     // prev neighbor
-    if (IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
+    if (prev != m - 1 && prev && IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
                  clockwise))  // not base && is convex
       current.push_back(prev);
 
     // next neighbor
-    if (IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
+    if (next != m - 1 && next &&
+        IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
       current.push_back(next);
   }
 
