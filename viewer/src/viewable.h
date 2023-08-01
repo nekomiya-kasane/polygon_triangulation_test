@@ -17,6 +17,8 @@ public:
 
   void SetOrigin(Vec2 origin);
   void SetBox(Vec2 box);
+  void SetFocus(Vec2 focus);
+
   void Draw(Vec2 origin, Vec2 factor);
   void GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const;
 
@@ -52,7 +54,7 @@ protected:
   Mountains _mountains;
   Triangles _triangles;
 
-  Vec2 _centroid, _origin, _factor, _box;
+  Vec2 _centroid, _origin, _factor, _box, _focus;
 
 #ifdef USE_EASYX
   inline int x(double ix) const { return static_cast<int>((ix - _centroid.x) * _factor.x + _origin.x); }
@@ -62,5 +64,6 @@ protected:
   inline float x(double ix) const { return static_cast<float>((ix - _centroid.x) * _factor.x + _origin.x); }
   inline float y(double iy) const { return static_cast<float>((iy - _centroid.y) * _factor.y + _origin.y); }
   float evalX(double iy, const Segment &seg) const;
+  float evalX(double iy, const Vec2 &low, const Vec2 &high) const;
 #endif
 };

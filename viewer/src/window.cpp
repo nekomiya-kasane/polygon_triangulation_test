@@ -87,8 +87,8 @@ int main()
 
 struct States
 {
-  bool drawGrid = false;
-  bool generateRandom = 0;
+  bool drawGrid          = false;
+  bool generateRandom    = 0;
   int generateRandomSize = 8;
 } states;
 
@@ -139,10 +139,10 @@ int main()
 {
   // Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0,
   // 40}};
-  Vec2Set points = {{0, 0}, {0, -12}, {8, -14} ,{4, -8}, {4, -4}, {8, -2}, {4, -1}};
+  Vec2Set points = {{0, 0}, {0, -12}, {8, -14}, {4, -8}, {4, -4}, {8, -2}, {4, -1}};
 
-  //Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
-  //                  {524, 752}, {480, 54},  {327, 91},  {276, 168}};
+  // Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
+  //                   {524, 752}, {480, 54},  {327, 91},  {276, 168}};
 
   ViewableTriangulator tri;
   tri.config.useGivenSeed = true;
@@ -193,6 +193,8 @@ int main()
         camera.zoom = zoomIncrement;
     }
 
+    Vector2 mousePos = GetMousePosition();
+
     // draw
     BeginDrawing();
     {
@@ -212,11 +214,12 @@ int main()
           rlPopMatrix();
         }
 
-        
         states.generateRandom =
             GuiCheckBox(Rectangle{10, screenHeight - 30, 20, 20}, " Generate random", states.generateRandom);
         states.generateRandomSize = GuiSliderBar(Rectangle{10, screenHeight - 60, 100, 20}, NULL,
                                                  " Point count", states.generateRandomSize, 0, 20);
+        DrawTextEx(font, (std::to_string(int(mousePos.x)) + ", " + std::to_string(int(mousePos.y))).c_str(),
+                   Vector2{10, screenHeight - 90}, 20, 0, GRAY);
 
         if (states.generateRandom)
         {
@@ -235,13 +238,14 @@ int main()
           tri.Build();
           tri.Triangulate();
 
-          first = false;
+          first                 = false;
           states.generateRandom = false;
         }
 
         // draw the shape
         tri.SetOrigin({screenWidth / 2, screenHeight / 2});
         tri.SetBox({screenWidth, screenHeight});
+        tri.SetFocus(Vec2{mousePos.x, mousePos.y});
 
         Vec2 ori = (lt + rb) / 2, factor{0.8 * screenWidth / (rb - lt).x, 0.8 * screenHeight / (rb - lt).y};
 

@@ -35,6 +35,11 @@ void ViewableTriangulator::SetBox(Vec2 box)
   _box = box;
 }
 
+void ViewableTriangulator::SetFocus(Vec2 focus)
+{
+  _focus = focus;
+}
+
 #pragma warning(push)
 #pragma warning(disable : 4244)
 void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
@@ -204,8 +209,8 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       float midX = 0, midY = 0;
       double highY = 0, lowY = 0, lowHighX = 0, lowLowX = 0, highLowX = 0, highHighX = 0;
 
-      highY = !Infinite(region.high) ? y(_vertices[region.high].y) : _box.y - 5;
-      lowY  = !Infinite(region.low) ? y(_vertices[region.low].y) : y(0);
+      highY = !Infinite(region.high) ? y(_vertices[region.high].y) : 0;
+      lowY  = !Infinite(region.low) ? y(_vertices[region.low].y) : _box.y - 5;
       if (!Infinite(region.left))
       {
         const Segment &left = _segments[region.left];
@@ -243,22 +248,20 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       assert(midX >= 0 && midX <= _box.x);
       assert(midY >= 0 && midY <= _box.y);
 
+      // highlight regions containing the cursor
       auto color = (region.depth != INVALID_DEPTH && (region.depth % 2 == 1)) ? YELLOW : GRAY;
-
-      const Segment &left = _segments[region.left], &right = _segments[region.right];
-      if (region.depth)
+      if (_focus.y <= (double)(int)lowY && _focus.y >= (double)(int)highY)
       {
-        if (left.lowVertex == right.lowVertex)
-          DrawTriangle(pts[1], pts[2], pts[3], Fade(color, 0.3f));
-        else if (left.highVertex == right.highVertex)
-          DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3f));
-        // non-degenerated
-        else
-        {
-          DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3f));
-          DrawTriangle(pts[0], pts[2], pts[3], Fade(color, 0.3f));
-        }
+        auto left  = evalX(_focus.y, {lowHighX, lowY}, {highHighX, highY}),
+             right = evalX(_focus.y, {lowLowX, lowY}, {highLowX, highY});
+        assert(right >= left);
+        if (_focus.x >= left && _focus.x <= right)
+          color = PURPLE;
       }
+
+      // background
+      DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3f));
+      DrawTriangle(pts[0], pts[2], pts[3], Fade(color, 0.3f));
 
       DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20.f, 0.f, color);
       DrawCircle(static_cast<int>(midX), static_cast<int>(midY), 2, color);
@@ -423,8 +426,13 @@ int ViewableTriangulator::evalX(double iy, const Segment &seg) const
 float ViewableTriangulator::evalX(double iy, const Segment &seg) const
 {
   const Vec2 low = _vertices[seg.lowVertex], high = _vertices[seg.highVertex];
+  return evalX(iy, {x(low.x), y(low.y)}, {x(high.x), y(high.y)});
+}
+
+float ViewableTriangulator::evalX(double iy, const Vec2 &low, const Vec2 &high) const
+{
   if (low.y == high.y)
     return static_cast<float>((low.x + high.x) / 2);
-  return x((iy - y(low.y)) / (y(high.y) - y(low.y)) * (high.x - low.x) + low.x);
+  return (iy - low.y) / (high.y - low.y) * (high.x - low.x) + low.x;
 }
 #endif
