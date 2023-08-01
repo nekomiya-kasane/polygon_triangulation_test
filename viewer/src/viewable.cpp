@@ -169,7 +169,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       {
         pt[1].x = evalX(vertex.y, _segments[rightRegion.right]);
       }
-      DrawLineEx(pt[0], pt[1], 1, Fade(YELLOW, 0.35));
+      DrawLineEx(pt[0], pt[1], 1.f, Fade(YELLOW, 0.35f));
 
       // draw points
       DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, RED);
@@ -182,10 +182,12 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   if (!methods.segmentDrawer)
   {
-    methods.segmentDrawer = new SegmentDrawer([this](const Segment &segment, const std::string &) {
+    methods.segmentDrawer = new SegmentDrawer([this](const Segment &segment, const std::string &label) {
       const Vertex &highVertex = _vertices[segment.highVertex];
       const Vertex &lowVertex  = _vertices[segment.lowVertex];
+      auto midX = (highVertex.x + lowVertex.x) / 2.f, midY = (highVertex.y + lowVertex.y) / 2.f;
       DrawLineEx(Vector2{x(highVertex.x), y(highVertex.y)}, Vector2{x(lowVertex.x), y(lowVertex.y)}, 2, BLUE);
+      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{x(midX), y(midY)}, 20.f, 0.f, BLUE);
     });
   }
 
@@ -219,12 +221,12 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
         if (region.depth)
         {
           if (left.lowVertex == right.lowVertex)
-            DrawTriangle(pts[1], pts[2], pts[3], Fade(color, 0.3));
+            DrawTriangle(pts[1], pts[2], pts[3], Fade(color, 0.3f));
           else if (left.highVertex == right.highVertex)
-            DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3));
+            DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3f));
           // non-degenerated
           else
-            DrawTriangleFan(pts, 4, Fade(color, 0.3));
+            DrawTriangleFan(pts, 4, Fade(color, 0.3f));
         }
 
         midX = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
@@ -261,6 +263,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
         midY = y((lowY + highY) / 2.);
 
       DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20.f, 0.f, color);
+      DrawCircle(static_cast<int>(midX), static_cast<int>(midY), 2, color);
     });
   }
 
@@ -343,6 +346,52 @@ void ViewableTriangulator::GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) cons
 Triangles ViewableTriangulator::Triangulate() const
 {
   const_cast<Triangles &>(_triangles) = Triangulator::Triangulate();  // hack it
+
+  // for generating test cases
+#ifdef _DEBUG
+  size_t i = 0;
+  std::cout << "\n// check the trapezoid map" << std::endl;
+  auto idStr = [](AnyID id) -> std::string {
+    if (!Valid(id))
+      return "Nil";
+    if (Infinite(id))
+      return "Inf";
+    return std::to_string(id);
+  };
+
+  for (const auto &node : _nodes)
+  {
+    std::cout << "const auto &node" << i << " = triangulator._nodes[" << i << "];\n";
+    std::cout << "EXPECT_NODE(node" << i << ", " << i << ", Node::"
+              << ((node.type == Node::REGION)    ? "REGION"
+                  : (node.type == Node::SEGMENT) ? "SEGMENT"
+                                                 : "VERTEX")
+              << ", " << idStr(node.value) << ", " << idStr(node.left) << ", " << idStr(node.right) << ");\n";
+    ++i;
+  }
+  i = 0;
+  std::cout << "\n// check regions " << std::endl;
+  for (const auto &region : _regions)
+  {
+    std::cout << "const auto &s" << i << " = triangulator._regions[" << i << "];\n";
+    std::cout << "EXPECT_REGION(s" << i << ", " << region.nodeID << ", " << idStr(region.high) << ", "
+              << idStr(region.low) << ", " << idStr(region.left) << ", " << idStr(region.right) << ", "
+              << idStr(region.lowNeighbors[0]) << ", " << idStr(region.lowNeighbors[1]) << ", "
+              << idStr(region.highNeighbors[0]) << ", " << idStr(region.highNeighbors[1]) << ", " << region.depth << ");\n";
+    ++i;
+  }
+  i = 0;
+  std::cout << "\n// check low neighbors of vertices " << std::endl;
+  for (const auto &lowNeis : _lowNeighbors)
+  {
+    std::cout << "const auto &n" << i << " = triangulator._lowNeighbors[" << i << "];\n";
+    std::cout << "EXPECT_LOW_NEIGHBOR(n" << i << ", " << idStr(lowNeis.left) << ", " << idStr(lowNeis.mid)
+              << ", " << idStr(lowNeis.right) << ");\n";
+    ++i;
+  }
+  std::cout << std::endl;
+#endif
+
   return _triangles;
 }
 

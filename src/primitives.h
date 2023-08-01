@@ -40,6 +40,8 @@ struct Node
   AnyID value;
 
   NodeID left = INVALID_INDEX, right = INVALID_INDEX;
+
+  std::string ToString() const;
 };
 #  pragma warning(pop)
 
@@ -54,6 +56,8 @@ struct Region
   Depth depth;
 
   RegionID highNeighbors[2], lowNeighbors[2];
+
+  std::string ToString() const;
 };
 
 struct Segment
@@ -66,6 +70,8 @@ struct Segment
   inline const VertexID &to() const { return downward ? lowVertex : highVertex; }
   inline VertexID &from() { return downward ? highVertex : lowVertex; }
   inline VertexID &to() { return downward ? lowVertex : highVertex; }
+
+  std::string ToString() const;
 };
 
 using Vertex   = Vec2;

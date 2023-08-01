@@ -283,7 +283,7 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
   //       if the neighboring vertex is not an endpoint of the base, and was made convex by cutting
   //       off the ear, then add this neighbor to the list
 
-  auto m = mountain.size();
+  unsigned int m = static_cast<unsigned int>(mountain.size());
   if (m == 3)
   // degenerated mountain
   {
@@ -312,8 +312,7 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
   }
   assert(!current.empty());
 
-  unsigned int cur = 0;
-  unsigned int n = static_cast<unsigned int>(m);
+  unsigned int cur = 0, n = m;
   while (n-- >= 3)
   {
     // get cut this ear
@@ -321,6 +320,7 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
 
     if (!Valid(prevs[cur]))
     {
+      assert(!Valid(nexts[cur]));
       current.pop_back();
       continue;
     }

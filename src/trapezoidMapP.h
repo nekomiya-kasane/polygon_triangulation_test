@@ -33,7 +33,7 @@ public:
   } config;
 
   // clang-format off
-SEIDEL_PRIVATE :
+SEIDEL_PRIVATE:
   /* AddVertex : true - already added, false - newly added */
   bool AddVertex(VertexID vertexID, NodeID startNodeID = ROOT_NODE_ID);
   bool AddSegment(SegmentID segmentID);

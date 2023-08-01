@@ -1,5 +1,7 @@
 #include "primitives.h"
 
+#include <sstream>
+
 constexpr const char *const regionFiller()
 {
   char *const result = new char[sizeof(Region)];
@@ -35,3 +37,44 @@ Region::Region()
   memcpy(this, data, sizeof(Region));
 }
 #pragma warning(pop)
+
+std::string Node::ToString() const
+{
+  std::stringstream ss;
+  ss << "(" << id << ", ";
+  switch (type)
+  {
+    case Node::NONE:
+      ss << "None, ";
+      break;
+    case Node::VERTEX:
+      ss << "Vertex, ";
+      break;
+    case Node::SEGMENT:
+      ss << "Segment, ";
+      break;
+    case Node::REGION:
+      ss << "Region, ";
+      break;
+  }
+  ss << value << ", [" << left << ", " << right << "])";
+  return ss.str();
+}
+
+std::string Region::ToString() const
+{
+  std::stringstream ss;
+  ss << "(Node(" << nodeID << "), Vert(" << high << ", " << low << "), Edge(" << left << ", " << right
+     << "), Low(" << lowNeighbors[0] << ", " << lowNeighbors[1] << "), High(" << highNeighbors[0] << ", "
+     << highNeighbors[1] << "), Depth(" << depth << "))";
+  return ss.str();
+}
+
+std::string Segment::ToString() const
+{
+  std::stringstream ss;
+  ss << "((" << highVertex << ", " << lowVertex << ", " << downward << "), (" << from() << ", " << to()
+     << "))";
+
+  return ss.str();
+}
