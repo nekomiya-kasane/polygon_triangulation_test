@@ -6,6 +6,8 @@
 #else
 #  pragma warning(push, 0)
 #  include "raylib.h"
+#  include "raymath.h"
+#  include "rlgl.h"
 #  pragma warning(pop)
 #endif
 
@@ -156,7 +158,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
     methods.vertexDrawer = new VertexDrawer([this](const Vertex &vertex, const std::string &label) {
       // draw horizontal line LINESTYLE oldStyle;
       VertexID id   = _vertices.GetIndex(&vertex);
-      Vector2 pt[2] = {{0, y(vertex.y)}, {1024, y(vertex.y)}};
+      Vector2 pt[2] = {{0, y(vertex.y)}, {8192, y(vertex.y)}};
 
       const Region &leftRegion = _regions[_lowNeighbors[id].left];
       if (!Infinite(leftRegion.left) && Valid(leftRegion.left))
@@ -287,7 +289,15 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   if (!methods.mountainDrawer)
   {
-    // not needed currently.
+    methods.mountainDrawer = new MountainDrawer([this](const Mountain &mountain, const std::string &label) {
+      for (Mountain::size_type i = 0; i < mountain.size() - 1; ++i)
+        DrawLineEx(Vector2{x(_vertices[mountain[i]].x), y(_vertices[mountain[i]].y)},
+                   Vector2{x(_vertices[mountain[i + 1]].x), y(_vertices[mountain[i + 1]].y)}, 2,
+                   Fade(PURPLE, 0.3f));
+      DrawLineEx(Vector2{x(_vertices[mountain.back()].x), y(_vertices[mountain.back()].y)},
+                 Vector2{x(_vertices[mountain[0]].x), y(_vertices[mountain[0]].y)}, 2,
+                 Fade(PURPLE, 0.3f));
+    });
   }
 #endif
 
@@ -308,8 +318,8 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   i = 0;
   if (methods.segmentDrawer)
-    for (const auto &segment : _segments)
-      (*methods.segmentDrawer)(segment, "e" + std::to_string(i++));
+    for (const auto &segmentID : _permutation)
+      (*methods.segmentDrawer)(_segments[segmentID], "e" + std::to_string(segmentID));
 
   i = 0;
   if (methods.vertexDrawer)
@@ -349,47 +359,52 @@ Triangles ViewableTriangulator::Triangulate() const
 
   // for generating test cases
 #ifdef _DEBUG
-  size_t i = 0;
-  std::cout << "\n// check the trapezoid map" << std::endl;
-  auto idStr = [](AnyID id) -> std::string {
-    if (!Valid(id))
-      return "Nil";
-    if (Infinite(id))
-      return "Inf";
-    return std::to_string(id);
-  };
+  if (config.printData)
+  {
+    size_t i = 0;
+    std::cout << "\n// check the trapezoid map" << std::endl;
+    auto idStr = [](AnyID id) -> std::string {
+      if (!Valid(id))
+        return "Nil";
+      if (Infinite(id))
+        return "Inf";
+      return std::to_string(id);
+    };
 
-  for (const auto &node : _nodes)
-  {
-    std::cout << "const auto &node" << i << " = triangulator._nodes[" << i << "];\n";
-    std::cout << "EXPECT_NODE(node" << i << ", " << i << ", Node::"
-              << ((node.type == Node::REGION)    ? "REGION"
-                  : (node.type == Node::SEGMENT) ? "SEGMENT"
-                                                 : "VERTEX")
-              << ", " << idStr(node.value) << ", " << idStr(node.left) << ", " << idStr(node.right) << ");\n";
-    ++i;
+    for (const auto &node : _nodes)
+    {
+      std::cout << "const auto &node" << i << " = triangulator._nodes[" << i << "];\n";
+      std::cout << "EXPECT_NODE(node" << i << ", " << i << ", Node::"
+                << ((node.type == Node::REGION)    ? "REGION"
+                    : (node.type == Node::SEGMENT) ? "SEGMENT"
+                                                   : "VERTEX")
+                << ", " << idStr(node.value) << ", " << idStr(node.left) << ", " << idStr(node.right)
+                << ");\n";
+      ++i;
+    }
+    i = 0;
+    std::cout << "\n// check regions " << std::endl;
+    for (const auto &region : _regions)
+    {
+      std::cout << "const auto &s" << i << " = triangulator._regions[" << i << "];\n";
+      std::cout << "EXPECT_REGION(s" << i << ", " << region.nodeID << ", " << idStr(region.high) << ", "
+                << idStr(region.low) << ", " << idStr(region.left) << ", " << idStr(region.right) << ", "
+                << idStr(region.lowNeighbors[0]) << ", " << idStr(region.lowNeighbors[1]) << ", "
+                << idStr(region.highNeighbors[0]) << ", " << idStr(region.highNeighbors[1]) << ", "
+                << region.depth << ");\n";
+      ++i;
+    }
+    i = 0;
+    std::cout << "\n// check low neighbors of vertices " << std::endl;
+    for (const auto &lowNeis : _lowNeighbors)
+    {
+      std::cout << "const auto &n" << i << " = triangulator._lowNeighbors[" << i << "];\n";
+      std::cout << "EXPECT_LOW_NEIGHBOR(n" << i << ", " << idStr(lowNeis.left) << ", " << idStr(lowNeis.mid)
+                << ", " << idStr(lowNeis.right) << ");\n";
+      ++i;
+    }
+    std::cout << std::endl;
   }
-  i = 0;
-  std::cout << "\n// check regions " << std::endl;
-  for (const auto &region : _regions)
-  {
-    std::cout << "const auto &s" << i << " = triangulator._regions[" << i << "];\n";
-    std::cout << "EXPECT_REGION(s" << i << ", " << region.nodeID << ", " << idStr(region.high) << ", "
-              << idStr(region.low) << ", " << idStr(region.left) << ", " << idStr(region.right) << ", "
-              << idStr(region.lowNeighbors[0]) << ", " << idStr(region.lowNeighbors[1]) << ", "
-              << idStr(region.highNeighbors[0]) << ", " << idStr(region.highNeighbors[1]) << ", " << region.depth << ");\n";
-    ++i;
-  }
-  i = 0;
-  std::cout << "\n// check low neighbors of vertices " << std::endl;
-  for (const auto &lowNeis : _lowNeighbors)
-  {
-    std::cout << "const auto &n" << i << " = triangulator._lowNeighbors[" << i << "];\n";
-    std::cout << "EXPECT_LOW_NEIGHBOR(n" << i << ", " << idStr(lowNeis.left) << ", " << idStr(lowNeis.mid)
-              << ", " << idStr(lowNeis.right) << ");\n";
-    ++i;
-  }
-  std::cout << std::endl;
 #endif
 
   return _triangles;
@@ -397,9 +412,8 @@ Triangles ViewableTriangulator::Triangulate() const
 
 Mountains ViewableTriangulator::ExtractMountains() const
 {
-  Mountains res = Triangulator::ExtractMountains();
-  // std::copy(res.begin(), res.end(), std::back_inserter(_mountains));
-  return res;
+  const_cast<Mountains &>(_mountains) = Triangulator::ExtractMountains();
+  return _mountains;
 }
 
 #ifdef USE_EASYX

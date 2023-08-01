@@ -60,12 +60,17 @@ void TrapezoidMapP::Build()
     std::mt19937 g(rd());
     std::shuffle(_permutation.begin(), _permutation.end(), g);
   }
-
 #ifdef _DEBUG
-  std::ios::sync_with_stdio(false);
-  for (const auto ID : _permutation)
-    std::cout << ID << '\t';
-  std::cout << std::endl;
+  if (config.incremental)
+    _permutation.resize(std::min(static_cast<unsigned int>(_permutation.size()), config.maxSegment));
+
+  if (config.printData)
+  {
+    std::ios::sync_with_stdio(false);
+    for (const auto ID : _permutation)
+      std::cout << ID << ', ';
+    std::cout << std::endl;
+  }
 #endif
 
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
@@ -117,37 +122,52 @@ void TrapezoidMapP::Build()
     }
   }
 
-  // assign depth
-  AssignDepth();
+// assign depth
+#ifdef _DEBUG
+  if (config.assignDepth)
+#endif
+    AssignDepth();
 
 #ifdef _DEBUG
-  size_t i = 0;
-  std::cout << "\nNodes: " << std::endl;
-  for (const auto &node : _nodes)
+  if (config.printData)
   {
-    std::cout << i++ << ": " << node.ToString() << std::endl;
+    size_t i = 0;
+    std::cout << "\nNodes: " << std::endl;
+    for (const auto &node : _nodes)
+    {
+      std::cout << i++ << ": " << node.ToString() << std::endl;
+    }
+    i = 0;
+    std::cout << "\nRegions: " << std::endl;
+    for (const auto &region : _regions)
+    {
+      std::cout << i++ << ": " << region.ToString() << std::endl;
+    }
+    i = 0;
+    std::cout << "\nSegments: " << std::endl;
+    for (const auto &segment : _segments)
+    {
+      std::cout << i++ << ": " << segment.ToString() << std::endl;
+    }
+    i = 0;
+    std::cout << "\nLow Neighbors: " << std::endl;
+    for (const auto &lowNeis : _lowNeighbors)
+    {
+      std::cout << i++ << ": "
+                << "(" << lowNeis.left << ", " << lowNeis.mid << ", " << lowNeis.right << ")\n";
+    }
+    std::cout << std::endl;
   }
-  i = 0;
-  std::cout << "\nRegions: " << std::endl;
-  for (const auto &region : _regions)
-  {
-    std::cout << i++ << ": " << region.ToString() << std::endl;
-  }
-  i = 0;
-  std::cout << "\nSegments: " << std::endl;
-  for (const auto &segment : _segments)
-  {
-    std::cout << i++ << ": " << segment.ToString() << std::endl;
-  }
-  i = 0;
-  std::cout << "\nLow Neighbors: " << std::endl;
-  for (const auto &lowNeis : _lowNeighbors)
-  {
-    std::cout << i++ << ": "
-              << "(" << lowNeis.left << ", " << lowNeis.mid << ", " << lowNeis.right << ")\n";
-  }
-  std::cout << std::endl;
 #endif
+}
+
+void TrapezoidMapP::Reset()
+{
+  _nodes.Reset();
+  _regions.Reset();
+  _lowNeighbors.clear();
+  _vertexRegions.clear();
+  _permutation.clear();
 }
 
 bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)

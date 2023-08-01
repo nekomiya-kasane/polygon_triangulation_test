@@ -4,8 +4,12 @@
 
 Mountains Triangulator::ExtractMountains() const
 {
-  // todo: simplify the code
+#ifdef _DEBUG
+  if (!config.generateMountains)
+    return {};
+#endif
 
+  // todo: simplify the code
   std::vector<bool> leftSegmentVisited(_regions.Size(), false), rightSegmentVisited(_regions.Size(), false);
 
   Mountains mountains;
@@ -265,7 +269,14 @@ Triangles Triangulator::Triangulate() const
 {
   Triangles triangles;
 
-  for (const auto &[mountain, cw] : ExtractMountains())
+  Mountains mountains = ExtractMountains();
+
+#ifdef _DEBUG
+  if (!config.triangulation)
+    return triangles;
+#endif
+
+  for (const auto &[mountain, cw] : mountains)
     TriangulateMountain(mountain, triangles, cw);
 
   return triangles;
@@ -342,7 +353,8 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
     current.pop_back();
 
     // prev neighbor
-    if (prev != m - 1 && prev && IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
+    if (prev != m - 1 && prev &&
+        IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
                  clockwise))  // not base && is convex
       current.push_back(prev);
 

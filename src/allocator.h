@@ -90,6 +90,8 @@ public:
     return Size() - 1;
   }
 
+  inline void Reset() { _next = _data; }
+
   inline size_type GetIndex(const T *const elementPtr) const
   {
     assert((elementPtr < _top) && (elementPtr >= _data));

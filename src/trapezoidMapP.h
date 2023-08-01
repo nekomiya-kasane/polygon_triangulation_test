@@ -22,14 +22,26 @@ class TrapezoidMapP
 public:
   void AddPolygon(const Vec2Set &points, bool compactPoints = false);
   void Build();
+  void Reset();
 
-  struct
+  struct Config
   {
     double tolerance       = 1e-16;
     bool checkIntersection = false;
     bool useGivenSeed      = false;
     int seed               = 1;
     unsigned short phase   = 0; /* phase to update `_vertexRegions` */
+
+#  ifdef _DEBUG
+    // for debugging
+    bool incremental        = false;
+    bool printData          = true;
+    bool assignDepth        = true;
+    bool generateMountains  = true;
+    bool triangulation      = true;
+    unsigned int maxSegment = 9999;
+#  endif
+
   } config;
 
   // clang-format off

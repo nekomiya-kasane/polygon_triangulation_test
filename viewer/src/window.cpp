@@ -1,6 +1,7 @@
 ﻿#include "viewable.h"
 
 #include <chrono>
+#include <cstring>
 
 #ifdef USE_EASYX
 #  include "easyx.h"
@@ -83,16 +84,58 @@ int main()
 #  include "raygui.h"  // Required for GUI controls
 #  pragma warning(pop)
 
-struct
+struct States
 {
-  bool drawGrid = false;
+  bool drawGrid  = false;
 } states;
+
+bool ResolveConfig(Triangulator &tri)
+{
+  States oldStates               = states;
+  Triangulator::Config oldConfig = tri.config;
+  tri.config.printData   = GuiCheckBox(Rectangle{10, 40, 20, 20}, " Print data", tri.config.printData);
+  states.drawGrid        = GuiCheckBox(Rectangle{10, 70, 20, 20}, " Draw grids", states.drawGrid);
+  tri.config.incremental = GuiCheckBox(Rectangle{10, 100, 20, 20}, " Incremental", tri.config.incremental);
+  if (tri.config.incremental)
+  {
+    tri.config.assignDepth = tri.config.generateMountains = tri.config.triangulation = false;
+    tri.config.maxSegment =
+        GuiSliderBar(Rectangle{10, 130, 100, 20}, NULL, " Segments", tri.config.maxSegment, 0, tri._segments.Size());
+    DrawText(std::to_string(tri.config.maxSegment).c_str(), 175, 133, 14, GRAY);
+  }
+  else
+  {
+    tri.config.assignDepth = GuiCheckBox(Rectangle{10, 130, 20, 20}, " Depth", tri.config.assignDepth);
+    if (tri.config.assignDepth)
+    {
+      tri.config.generateMountains =
+          GuiCheckBox(Rectangle{10, 160, 20, 20}, " Mountains", tri.config.generateMountains);
+      if (tri.config.generateMountains)
+      {
+        tri.config.triangulation =
+            GuiCheckBox(Rectangle{10, 190, 20, 20}, " Triangles", tri.config.triangulation);
+      }
+      else
+      {
+        tri.config.triangulation = false;
+      }
+    }
+    else
+    {
+      tri.config.generateMountains = tri.config.triangulation = false;
+    }
+  }
+
+  if (std::memcmp(&states, &oldStates, sizeof(States)) ||
+      std::memcmp(&oldConfig, &tri.config, sizeof(Triangulator::Config)))
+    return true;
+  return false;
+}
 
 int main()
 {
-  Vec2Set points = {{67, 200},  {267, 315}, {170, 209}, {333, 200},
-                    {167, 173}, {107, 117}, {276, 66},  {58, 85}};
-  //Vec2Set points = {{0, 0}, {0, -12}, {8, -14} ,{4, -8}, {4, -4}, {8, -2}, {4, -1}};
+  Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0, 40}};
+  // Vec2Set points = {{0, 0}, {0, -12}, {8, -14} ,{4, -8}, {4, -4}, {8, -2}, {4, -1}};
 
   ViewableTriangulator tri;
   tri.config.useGivenSeed = true;
@@ -106,8 +149,8 @@ int main()
   tri.GetBoundingBox(lt, rb);
 
   // visualization
-  const int screenWidth  = 1024;
-  const int screenHeight = 768;
+  const int screenWidth  = 1920;
+  const int screenHeight = 1080;
 
   InitWindow(screenWidth, screenHeight, "Seidel Algorithm Visualizer");
   SetWindowMinSize(screenWidth, screenHeight);
@@ -166,12 +209,17 @@ int main()
           rlPopMatrix();
         }
 
-        states.drawGrid = GuiCheckBox(Rectangle{10, 40, 20, 20}, " Draw grids", states.drawGrid);
+        if (ResolveConfig(tri))
+        {
+          tri.Reset();
+          tri.Build();
+          tri.Triangulate();
+        }
 
         // draw the shape
-        tri.SetOrigin({512, 384});
+        tri.SetOrigin({screenWidth / 2, screenHeight / 2});
 
-        Vec2 ori = (lt + rb) / 2, factor{0.8 * 1024. / (rb - lt).x, 0.8 * 768. / (rb - lt).y};
+        Vec2 ori = (lt + rb) / 2, factor{0.8 * screenWidth / (rb - lt).x, 0.8 * screenHeight / (rb - lt).y};
 
         tri.Draw(ori, factor);
 
