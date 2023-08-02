@@ -14,18 +14,18 @@ int main()
 
   std::vector<std::pair<int, double>> data;
 
-  for (int i = 15; i < 120; ++i)
+  for (int i : {10, 50, 100, 500, 1000, 5000, 10000, 50000})
   {
     interval = 0;
 
-    std::cout << "#points = " << 200 * i << std::endl;
+    std::cout << "#points = " << i << std::endl;
     std::cout << "Generating points ... ";
     // auto points = PolygonGenerator::GenerateRandomPolygonBySculpting(std::pow(10, i), -1e5, 1e5);
     for (int j = 0; j < m; ++j)
     {
       std::cout << j << " ";
       start       = timer.now();
-      auto points = PolygonGenerator::GenerateRandomPolygon(200 * i, -1e3, 1e3, -1e3, 1e3);
+      auto points = PolygonGenerator::GenerateRandomPolygon(i, -1e3, 1e3, -1e3, 1e3);
       interval    = (timer.now() - start).count() / 1e9;
 
       std::fstream file(std::to_string(i) + ".txt", std::ios::ate | std::ios::out);
@@ -39,6 +39,7 @@ int main()
       try
       {
         Triangulator tri;
+        tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING;
         tri.AddPolygon(points[0], true);
         tri.Build();
         tri.Triangulate();

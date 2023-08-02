@@ -263,7 +263,10 @@ void Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out,
 {
   if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING)
     EarClipping(mountain, out, clockwise);
-  ChimneyClipping(mountain, out);
+  else if (configTri.mountainResolutionMethod == ConfigTri::CHIMNEY_CLIPPING_GREEDY)
+    ChimneyClipping(mountain, out, clockwise);
+  else
+    ChimneyClipping2(mountain, out, clockwise);
 }
 
 Triangles Triangulator::Triangulate() const
@@ -367,13 +370,11 @@ void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool cl
   }
 }
 
-void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out) const
+void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
   // todo: this is highly possibly to be problematic. Re-read this.
   assert(mountain.size() > 2);
   std::vector<VertexID> stack = {mountain[0], mountain[1]};
-
-  bool clockwise = configTri.useNeighborCacheToTransverse;
 
   VertexID next;
   for (size_t i = 2; i < mountain.size() && stack.size() >= 2; ++i)
@@ -381,20 +382,58 @@ void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out) con
     next = mountain[i];
 
     VertexID current = stack.back(), prev = *(stack.cend() - 2);
-    if (!IsConvex(next, current, prev, clockwise))
+    if (!IsConvex(prev, current, next, clockwise))
       stack.push_back(next);
     else
     {
-      while (IsConvex(next, current, prev, clockwise))
+      Triangle triangle = Triangle{_vertices[prev], _vertices[current], _vertices[next]};
+      if (CheckTriangle(triangle))
+        out.push_back(triangle);
+      current = next;
+      stack.pop_back();
+
+      prev = stack.back();
+      stack.push_back(next);
+
+      if (stack.size() < 2)
+        break;
+    }
+  }
+}
+
+void Triangulator::ChimneyClipping2(const Mountain &mountain, Triangles &out, bool clockwise) const
+{
+  // todo: this is highly possibly to be problematic. Re-read this.
+  assert(mountain.size() > 2);
+  std::vector<VertexID> stack = {mountain[0], mountain[1]};
+
+  VertexID next;
+  for (size_t i = 2; i < mountain.size() && stack.size() >= 2; ++i)
+  {
+    next = mountain[i];
+
+    VertexID current = stack.back(), prev = *(stack.cend() - 2);
+    if (!IsConvex(prev, current, next, clockwise))
+      stack.push_back(next);
+    else
+    {
+      while (IsConvex(prev, current, next, clockwise))
       {
         Triangle triangle = Triangle{_vertices[prev], _vertices[current], _vertices[next]};
         if (CheckTriangle(triangle))
           out.push_back(triangle);
-        current = next;
+
         stack.pop_back();
         if (stack.size() < 2)
+        {
+          stack.push_back(next);
+          current = stack.back();
+          prev    = *(stack.cend() - 2);
           break;
-        next = *(stack.cend() - 2);
+        }
+
+        current = stack.back();
+        prev    = *(stack.cend() - 2);
       }
     }
   }

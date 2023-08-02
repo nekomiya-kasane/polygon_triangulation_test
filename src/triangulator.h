@@ -55,12 +55,13 @@ public:
     {
       EAR_CLIPPING,
       CHIMNEY_CLIPPING,
+      CHIMNEY_CLIPPING_GREEDY,
     };
 
     double tolerance                                      = 1e-10;
     bool useNeighborCacheToTransverse                     = false;  // the second be base vertex if true
     bool multithreading                                   = false;  // todo: this can be paralleled
-    MountainResolutionPolicy mountainResolutionMethod     = EAR_CLIPPING;
+    MountainResolutionPolicy mountainResolutionMethod     = CHIMNEY_CLIPPING;
     CoarselyNearVerticesPolicy coarselyNearVerticesPolicy = DO_NOTHING;  // todo: implement this
     ZeroSizeTrianglePolicy zeroSizeTrianglePolicy         = KEEP_ALL;
     EarClippingPolicy earClippingPolicy                   = CONVENTIONAL;
@@ -72,7 +73,8 @@ protected:
   void TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const;
 
   void EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const;
-  void ChimneyClipping(const Mountain &mountain, Triangles &out) const;
+  void ChimneyClipping(const Mountain &mountain, Triangles &out, bool clockwise) const;
+  void ChimneyClipping2(const Mountain &mountain, Triangles &out, bool clockwise) const;
 
   bool CheckTriangle(const Triangle &triangle) const;
 

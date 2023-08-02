@@ -390,5 +390,7 @@ std::vector<Vec2Set> PolygonGenerator::GenerateRandomPolygonBySculpting(size_t n
   }
 
   SculpPolygon(hull, remained, points.size());
+  std::copy(hull.cbegin(), hull.cend(), std::back_inserter(hullVec));
+  hullVec.pop_back();
   return {hullVec};
 }

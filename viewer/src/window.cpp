@@ -90,6 +90,7 @@ struct States
   bool drawGrid             = false;
   bool generateRandom       = false;
   bool useSculpingGenerator = true;
+  bool allowHole            = true;
   int generateRandomSize    = 10;
 } states;
 
@@ -142,24 +143,50 @@ bool ResolveConfig(Triangulator &tri)
 
 int main()
 {
-  // Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0,
-  // 40}};
-  std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2, -2}},
-                                 {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4, -4}},
-                                 {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6, -6}},
-                                 {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8, -8}}};
+  std::vector<Vec2Set> points = {{{29, 19},
+                                  {335, 60},
+                                  {398, 108},
+                                  {516, 220},
+                                  {507, 468},
+                                  {531, 469},
+                                  {549, 367},
+                                  {571, 26},
+                                  {733, 72},
+                                  {859, 416},
+                                  {848, 599},
+                                  {738, 639},
+                                  {832, 687},
+                                  {849, 741},
+                                  {792, 769},
+                                  {248, 872},
+                                  {227, 886},
+                                  {136, 895},
+                                  {133, 877}}};
+  // std::vector<Vec2Set> points = {
+  //     {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0, 40}}};
+  //  std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2,
+  //  -2}},
+  //                                 {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4,
+  //                                 -4}},
+  //                                 {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6,
+  //                                 -6}},
+  //                                 {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8,
+  //                                 -8}}};
 
   // std::vector<Vec2Set> points = {{{2, 2}, {2, -2}, {0, -2}, {1, 0}, {-1, 0}, {0, -2}, {-2, -2}, {-2, 2}}};
 
   // Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
   //                   {524, 752}, {480, 54},  {327, 91},  {276, 168}};
 
+  // points = PolygonGenerator::GenerateRandomPolygon(1000);
+
   ViewableTriangulator tri;
-  tri.config.useGivenSeed = true;
-  tri.config.seed         = 1;
+  tri.config.useGivenSeed                = true;
+  tri.config.seed                        = 1;
+  tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING;
 #  ifdef _DEBUG
-  tri.config.incremental  = true;
-  tri.config.maxSegment   = 1;
+  tri.config.incremental                 = true;
+  tri.config.maxSegment                  = 1;
 #  endif
 
   // visualization
@@ -242,16 +269,19 @@ int main()
             (" Generate random " + std::to_string(states.generateRandomSize)).c_str(), states.generateRandom);
         states.useSculpingGenerator = GuiCheckBox(Rectangle{10, screenHeight - 60, 20, 20},
                                                   " Use sculpting generator ", states.useSculpingGenerator);
-        states.generateRandomSize   = GuiSliderBar(Rectangle{10, screenHeight - 90, 100, 20}, NULL,
-                                                   " Point count", states.generateRandomSize, 0, 100);
+        states.allowHole =
+            GuiCheckBox(Rectangle{10, screenHeight - 90, 20, 20}, " Allow hole ", states.allowHole);
+        states.generateRandomSize = GuiSliderBar(Rectangle{10, screenHeight - 120, 100, 20}, NULL,
+                                                 " Point count", states.generateRandomSize, 0, 100);
 
         DrawTextEx(font, (std::to_string(int(mousePos.x)) + ", " + std::to_string(int(mousePos.y))).c_str(),
-                   Vector2{10, screenHeight - 120}, 20, 0, GRAY);
+                   Vector2{10, screenHeight - 150}, 20, 0, GRAY);
 
         if (states.generateRandom)
         {
           points = states.useSculpingGenerator
-                       ? PolygonGenerator::GenerateRandomPolygonBySculpting(states.generateRandomSize)
+                       ? PolygonGenerator::GenerateRandomPolygonBySculpting(states.generateRandomSize, 0,
+                                                                            1000, 0, 1000, states.allowHole)
                        : PolygonGenerator::GenerateRandomPolygon(states.generateRandomSize);
         }
         if (first || states.generateRandom)
