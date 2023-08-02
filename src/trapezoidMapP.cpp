@@ -68,13 +68,20 @@ void TrapezoidMapP::Build()
   {
     std::ios::sync_with_stdio(false);
     for (const auto ID : _permutation)
-      std::cout << ID << ', ';
+      std::cout << ID << "-";
     std::cout << std::endl;
+
+    std::cout << "\nVertices: {" << std::endl;
+    for (const auto &vertex : _vertices)
+    {
+      std::cout << "{" << (int)vertex.x << ", " << (int)vertex.y << "}, ";
+    }
+    std::cout << "}";
   }
 #endif
 
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
-  _nodes.Reserve(_vertices.Size() * 3 + _segments.Size() * 3 + 6);
+  _nodes.Reserve(_vertices.Size() * 5 + _segments.Size() * 5 + 6);
   _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 6);
   _lowNeighbors.resize(_vertices.Size());
 
@@ -132,12 +139,6 @@ void TrapezoidMapP::Build()
   if (config.printData)
   {
     size_t i = 0;
-    std::cout << "\nVertices: " << std::endl;
-    for (const auto &vertex : _vertices)
-    {
-      std::cout << i++ << "{" << (int)vertex.x << ", " << (int)vertex.y << "} ";
-    }
-    i = 0;
     std::cout << "\nNodes: " << std::endl;
     for (const auto &node : _nodes)
     {
@@ -632,16 +633,16 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
         Region &lowNeiRegionLow = _regions[originalRegion.lowNeighbors[1]];
         if (lowNeiRegionLow.highNeighbors[0] == lowNeiRegionLow.highNeighbors[1])  // occasion 1/2/3
           lowNeiRegionLow.highNeighbors[0] = highRegionID;
-        if (originalRegion.lowNeighbors[0] != originalRegion.lowNeighbors[1]) // occasion 3
+        if (originalRegion.lowNeighbors[0] != originalRegion.lowNeighbors[1])  // occasion 3
         {
-          Region &lowNeiRegionHigh = _regions[originalRegion.lowNeighbors[0]];
+          Region &lowNeiRegionHigh          = _regions[originalRegion.lowNeighbors[0]];
           lowNeiRegionHigh.highNeighbors[0] = lowNeiRegionHigh.highNeighbors[1] = highRegionID;
         }
 
         lowNeiRegionLow.highNeighbors[1] = highRegionID;
 
-        highRegion.lowNeighbors[0]    = originalRegion.lowNeighbors[0];
-        highRegion.lowNeighbors[1]    = originalRegion.lowNeighbors[1];
+        highRegion.lowNeighbors[0] = originalRegion.lowNeighbors[0];
+        highRegion.lowNeighbors[1] = originalRegion.lowNeighbors[1];
       }
 
       _nextRegion       = originalRegion.lowNeighbors[1];
@@ -693,7 +694,7 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
       lowRegion.lowNeighbors[0]  = originalRegion.lowNeighbors[0];
       lowRegion.lowNeighbors[1]  = originalRegion.lowNeighbors[1];
       lowRegion.low              = originalRegion.low;
-      highRegion.lowNeighbors[1] = highRegion.lowNeighbors[0]; // needed?
+      highRegion.lowNeighbors[1] = highRegion.lowNeighbors[0];  // needed?
     }
     return res;
   }

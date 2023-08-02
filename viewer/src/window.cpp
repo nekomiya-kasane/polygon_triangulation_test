@@ -87,9 +87,10 @@ int main()
 
 struct States
 {
-  bool drawGrid          = false;
-  bool generateRandom    = 0;
-  int generateRandomSize = 8;
+  bool drawGrid             = false;
+  bool generateRandom       = false;
+  bool useSculpingGenerator = true;
+  int generateRandomSize    = 10;
 } states;
 
 bool ResolveConfig(Triangulator &tri)
@@ -140,8 +141,10 @@ int main()
 {
   // Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0,
   // 40}};
-  Vec2Set points = {{2, 661},   {87, 488},  {113, 997}, {709, 935}, {770, 831},
-                    {392, 181}, {273, 256}, {164, 46},  {13, 299}};
+  std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2, -2}},
+                                 {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4, -4}},
+                                 {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6, -6}},
+                                 {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8, -8}}};
 
   // Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
   //                   {524, 752}, {480, 54},  {327, 91},  {276, 168}};
@@ -150,6 +153,7 @@ int main()
   tri.config.useGivenSeed = true;
   tri.config.seed         = 1;
   tri.config.incremental  = true;
+  tri.config.maxSegment   = 1;
 
   // visualization
   const int screenWidth  = 1920;
@@ -180,6 +184,14 @@ int main()
       delta         = Vector2Scale(delta, -1.0f / camera.zoom);
 
       camera.target = Vector2Add(camera.target, delta);
+    }
+
+    // reset camera
+    if (IsKeyReleased(KEY_SPACE))
+    {
+      camera.target = {0, 0};
+      camera.zoom   = 1.0f;
+      camera.offset = {0, 0};
     }
 
     // zoom
@@ -219,19 +231,39 @@ int main()
         states.generateRandom = GuiCheckBox(
             Rectangle{10, screenHeight - 30, 20, 20},
             (" Generate random " + std::to_string(states.generateRandomSize)).c_str(), states.generateRandom);
-        states.generateRandomSize = GuiSliderBar(Rectangle{10, screenHeight - 60, 100, 20}, NULL,
-                                                 " Point count", states.generateRandomSize, 0, 20);
+        states.useSculpingGenerator = GuiCheckBox(Rectangle{10, screenHeight - 60, 20, 20},
+                                                  " Use sculpting generator ", states.useSculpingGenerator);
+        states.generateRandomSize   = GuiSliderBar(Rectangle{10, screenHeight - 90, 100, 20}, NULL,
+                                                   " Point count", states.generateRandomSize, 0, 100);
+
         DrawTextEx(font, (std::to_string(int(mousePos.x)) + ", " + std::to_string(int(mousePos.y))).c_str(),
-                   Vector2{10, screenHeight - 90}, 20, 0, GRAY);
+                   Vector2{10, screenHeight - 120}, 20, 0, GRAY);
 
         if (states.generateRandom)
         {
-          points = PolygonGenerator::GenerateRandomPolygon(states.generateRandomSize);
+          points = states.useSculpingGenerator
+                       ? PolygonGenerator::GenerateRandomPolygonBySculpting(states.generateRandomSize)
+                       : PolygonGenerator::GenerateRandomPolygon(states.generateRandomSize);
         }
         if (first || states.generateRandom)
         {
           tri.Reset();
-          tri.AddPolygon(points, true);
+          size_t i = 0;
+          for (const auto &contour : points)
+          {
+            if (contour.size() < 3)
+              continue;
+            if (tri.config.printData)
+            {
+              std::cout << i++ << " {";
+              for (const auto &point : contour)
+                std::cout << "{" << (int)point.x << ", " << (int)point.y << "}, ";
+              std::cout << "}";
+            }
+            tri.AddPolygon(contour, true);
+          }
+          if (!tri._vertices.Size())
+            continue;
           tri.GetBoundingBox(lt, rb);
         }
 

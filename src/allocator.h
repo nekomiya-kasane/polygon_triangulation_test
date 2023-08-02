@@ -35,6 +35,7 @@ public:
   template <class... Args>
   T &New(Args... args)
   {
+    // todo: expand memory
     T *res = new (_next) T(args...);
     _next++;
     return *res;
@@ -43,6 +44,7 @@ public:
   template <class... Args>
   size_type New2(Args... args)
   {
+    // todo: expand memory
     new (_next) T(args);
     _next++;
     return Size() - 1;
