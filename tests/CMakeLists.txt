@@ -13,6 +13,7 @@ FetchContent_MakeAvailable(googletest)
 
 set(TestSources
 	"basic.cpp"
+	"ptptco.cpp"
 )
 
 enable_testing()

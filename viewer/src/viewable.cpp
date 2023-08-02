@@ -373,6 +373,8 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       if (!Infinite(region.high) && Valid(region.low))
         (*methods.vertexDrawer)(_vertices[region.high], "v" + std::to_string(region.high), WHITE, true);
     }
+
+    _infoBuf += "S" + std::to_string(_regions.GetIndex(&region)) + ": " + region.ToString() + "\n";
   }
 }
 #pragma warning(pop)

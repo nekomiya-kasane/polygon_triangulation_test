@@ -141,10 +141,14 @@ int main()
 {
   // Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0,
   // 40}};
-  std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2, -2}},
-                                 {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4, -4}},
-                                 {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6, -6}},
-                                 {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8, -8}}};
+  // std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2,
+  // -2}},
+  //                               {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4, -4}},
+  //                               {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6, -6}},
+  //                               {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8,
+  //                               -8}}};
+
+  std::vector<Vec2Set> points = {{{2, 2}, {2, -2}, {0, -2}, {1, 0}, {-1, 0}, {0, -2}, {-2, -2}, {-2, 2}}};
 
   // Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
   //                   {524, 752}, {480, 54},  {327, 91},  {276, 168}};
@@ -156,11 +160,12 @@ int main()
   tri.config.maxSegment   = 1;
 
   // visualization
-  const int screenWidth  = 1920;
-  const int screenHeight = 1080;
+  const int screenWidth    = 1920;
+  const int screenHeight   = 1080;
+  const int infoPanelHight = 200;
 
-  InitWindow(screenWidth, screenHeight, "Seidel Algorithm Visualizer");
-  SetWindowMinSize(screenWidth, screenHeight);
+  InitWindow(screenWidth, screenHeight + infoPanelHight, "Seidel Algorithm Visualizer");
+  SetWindowMinSize(screenWidth, screenHeight + infoPanelHight);
 
   Camera2D camera = {0};
   camera.zoom     = 1.0f;
@@ -228,6 +233,7 @@ int main()
           rlPopMatrix();
         }
 
+        // generate random
         states.generateRandom = GuiCheckBox(
             Rectangle{10, screenHeight - 30, 20, 20},
             (" Generate random " + std::to_string(states.generateRandomSize)).c_str(), states.generateRandom);
@@ -277,6 +283,8 @@ int main()
           states.generateRandom = false;
         }
 
+        tri._infoBuf.clear();
+
         // draw the shape
         tri.SetOrigin({screenWidth / 2, screenHeight / 2});
         tri.SetBox({screenWidth, screenHeight});
@@ -286,8 +294,9 @@ int main()
 
         tri.Draw(ori, factor);
 
-        // draw rendering info
+        // draw info
         DrawFPS(10, 10);
+        DrawTextEx(font, tri._infoBuf.c_str(), Vector2{5, screenHeight + 5}, 20, 0, WHITE);
       }
       EndMode2D();
     }

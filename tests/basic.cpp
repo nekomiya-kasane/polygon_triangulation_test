@@ -1,10 +1,4 @@
-#include <gtest/gtest.h>
-
-#include "triangulator.h"
-
 #include "common.h"
-
-constexpr AnyID Nil = INVALID_INDEX, Inf = INFINITY_INDEX;
 
 // Demonstrate some basic assertions.
 TEST(BasicTest, DiamondCWMergeRight)

@@ -22,6 +22,7 @@ public:
   void Draw(Vec2 origin, Vec2 factor);
   void GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const;
 
+  std::string _infoBuf;
   bool _needRedraw = true;
 
   virtual Triangles Triangulate() const;

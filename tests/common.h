@@ -1,5 +1,11 @@
 #pragma once
 
+#include <gtest/gtest.h>
+
+#include "triangulator.h"
+
+constexpr AnyID Nil = INVALID_INDEX, Inf = INFINITY_INDEX;
+
 #define EXPECT_NODE(NODE, ID, TYPE, VAL, LEFT, RIGHT) \
   EXPECT_EQ(NODE.id, ID);                             \
   EXPECT_EQ(NODE.type, TYPE);                         \
