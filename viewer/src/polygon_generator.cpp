@@ -224,13 +224,13 @@ Vec2Set PolygonGenerator::GenerateRandomUniquePoints(size_t num,
   std::random_device rd;
   std::mt19937 generator(rd());
 
-  std::uniform_int_distribution<int> distX(xmin, xmax);
-  std::uniform_int_distribution<int> distY(ymin, ymax);
+  std::uniform_real_distribution<double> distX(xmin, xmax);
+  std::uniform_real_distribution<double> distY(ymin, ymax);
 
   std::set<Vec2> uniquePoints;
 
   while (uniquePoints.size() < num)
-    uniquePoints.insert({static_cast<double>(distX(generator)), static_cast<double>(distY(generator))});
+    uniquePoints.insert({distX(generator), distY(generator)});
 
   Vec2Set points;
   for (const auto &point : uniquePoints)
@@ -361,7 +361,8 @@ std::vector<Vec2Set> PolygonGenerator::GenerateRandomPolygonBySculpting(size_t n
                                                                         int xmin,
                                                                         int xmax,
                                                                         int ymin,
-                                                                        int ymax)
+                                                                        int ymax,
+                                                                        bool withHole)
 {
   Vec2Set points = GenerateRandomUniquePoints(num, xmin, xmax, ymin, ymax);
 
@@ -369,19 +370,25 @@ std::vector<Vec2Set> PolygonGenerator::GenerateRandomPolygonBySculpting(size_t n
   Vec2Set remained, temp, hullVec, inner;
 
   hull = std::move(GetHull(points, remained));
-  SculpPolygon(hull, remained, points.size() / 2);
-
-  std::copy(hull.cbegin(), hull.cend(), std::back_inserter(hullVec));
-  hullVec.pop_back();
-
-  if (remained.size() >= 3)
+  if (withHole)
   {
-    auto rmf = std::move(GetHull(remained, temp));
-    SculpPolygon(rmf, temp, 9999);
+    SculpPolygon(hull, remained, points.size() / 2);
 
-    std::copy(rmf.cbegin(), rmf.cend(), std::back_inserter(inner));
-    inner.pop_back();
+    std::copy(hull.cbegin(), hull.cend(), std::back_inserter(hullVec));
+    hullVec.pop_back();
+
+    if (remained.size() >= 3)
+    {
+      auto rmf = std::move(GetHull(remained, temp));
+      SculpPolygon(rmf, temp, 9999);
+
+      std::copy(rmf.cbegin(), rmf.cend(), std::back_inserter(inner));
+      inner.pop_back();
+    }
+
+    return {hullVec, inner};
   }
 
-  return {hullVec, inner};
+  SculpPolygon(hull, remained, points.size());
+  return {hullVec};
 }

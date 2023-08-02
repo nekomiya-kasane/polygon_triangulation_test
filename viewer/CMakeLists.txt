@@ -48,3 +48,15 @@ target_link_libraries(
 #)
 
 file(COPY "assets" DESTINATION ${PROJECT_BINARY_DIR}/viewer)
+
+set(MeterSources 
+	"src/meter.cpp"
+	"src/polygon_generator.h"
+	"src/polygon_generator.cpp"
+)
+
+add_executable(seidel_triangulation_meter ${MeterSources})
+target_link_libraries(
+  seidel_triangulation_meter PRIVATE
+  seidel_triangulator
+)

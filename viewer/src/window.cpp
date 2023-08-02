@@ -97,9 +97,11 @@ bool ResolveConfig(Triangulator &tri)
 {
   States oldStates               = states;
   Triangulator::Config oldConfig = tri.config;
+  states.drawGrid                = GuiCheckBox(Rectangle{10, 100, 20, 20}, " Draw grids", states.drawGrid);
+
+#  ifdef _DEBUG
   tri.config.printData   = GuiCheckBox(Rectangle{10, 40, 20, 20}, " Print data", tri.config.printData);
   tri.config.printCase   = GuiCheckBox(Rectangle{10, 70, 20, 20}, " Print case", tri.config.printCase);
-  states.drawGrid        = GuiCheckBox(Rectangle{10, 100, 20, 20}, " Draw grids", states.drawGrid);
   tri.config.incremental = GuiCheckBox(Rectangle{10, 130, 20, 20}, " Incremental", tri.config.incremental);
   if (tri.config.incremental)
   {
@@ -130,6 +132,7 @@ bool ResolveConfig(Triangulator &tri)
       tri.config.generateMountains = tri.config.triangulation = false;
     }
   }
+#  endif
 
   if (std::memcmp(&states, &oldStates, sizeof(States)) ||
       std::memcmp(&oldConfig, &tri.config, sizeof(Triangulator::Config)))
@@ -141,14 +144,12 @@ int main()
 {
   // Vec2Set points = {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0,
   // 40}};
-  // std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2,
-  // -2}},
-  //                               {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4, -4}},
-  //                               {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6, -6}},
-  //                               {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8,
-  //                               -8}}};
+  std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2, -2}},
+                                 {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4, -4}},
+                                 {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6, -6}},
+                                 {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8, -8}}};
 
-  std::vector<Vec2Set> points = {{{2, 2}, {2, -2}, {0, -2}, {1, 0}, {-1, 0}, {0, -2}, {-2, -2}, {-2, 2}}};
+  // std::vector<Vec2Set> points = {{{2, 2}, {2, -2}, {0, -2}, {1, 0}, {-1, 0}, {0, -2}, {-2, -2}, {-2, 2}}};
 
   // Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
   //                   {524, 752}, {480, 54},  {327, 91},  {276, 168}};
@@ -156,8 +157,10 @@ int main()
   ViewableTriangulator tri;
   tri.config.useGivenSeed = true;
   tri.config.seed         = 1;
+#  ifdef _DEBUG
   tri.config.incremental  = true;
   tri.config.maxSegment   = 1;
+#  endif
 
   // visualization
   const int screenWidth    = 1920;
@@ -259,6 +262,7 @@ int main()
           {
             if (contour.size() < 3)
               continue;
+#  ifdef _DEBUG
             if (tri.config.printData)
             {
               std::cout << i++ << " {";
@@ -266,6 +270,7 @@ int main()
                 std::cout << "{" << (int)point.x << ", " << (int)point.y << "}, ";
               std::cout << "}";
             }
+#  endif
             tri.AddPolygon(contour, true);
           }
           if (!tri._vertices.Size())

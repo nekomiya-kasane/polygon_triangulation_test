@@ -69,10 +69,10 @@ public:
 protected:
   virtual Mountains ExtractMountains() const;
 
-  Triangles TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const;
+  void TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const;
 
-  Triangles EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const;
-  Triangles ChimneyClipping(const Mountain &mountain, Triangles &out) const;
+  void EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const;
+  void ChimneyClipping(const Mountain &mountain, Triangles &out) const;
 
   bool CheckTriangle(const Triangle &triangle) const;
 

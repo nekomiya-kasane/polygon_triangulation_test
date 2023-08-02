@@ -19,6 +19,7 @@ Mountains Triangulator::ExtractMountains() const
     VertexID baseVertexID = leftSegment.highVertex;
 
     Mountain mountain;  // first and last vertex be the endpoints of the base edge
+    mountain.reserve(10);
 
     // jump to the top then go down
     bool clockwise = false;
@@ -258,16 +259,17 @@ Mountains Triangulator::ExtractMountains() const
   return mountains;
 }
 
-Triangles Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
   if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING)
-    return EarClipping(mountain, out, clockwise);
-  return ChimneyClipping(mountain, out);
+    EarClipping(mountain, out, clockwise);
+  ChimneyClipping(mountain, out);
 }
 
 Triangles Triangulator::Triangulate() const
 {
   Triangles triangles;
+  triangles.reserve(_vertices.Size());
 
   Mountains mountains = ExtractMountains();
 
@@ -282,7 +284,7 @@ Triangles Triangulator::Triangulate() const
   return triangles;
 }
 
-Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
   // [Monotone Mountain Triangulation] using a special ear clipping algorithm:
   //   Initialize an empty list
@@ -298,8 +300,8 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
   if (m == 3)
   // degenerated mountain
   {
-    out.push_back(Triangle{_vertices[mountain[0]], _vertices[mountain[1]], _vertices[mountain[2]]});
-    return out;
+    out.emplace_back(Triangle{_vertices[mountain[0]], _vertices[mountain[1]], _vertices[mountain[2]]});
+    return;
   }
 
   std::vector<unsigned int> prevs, nexts, current;
@@ -363,11 +365,9 @@ Triangles Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bo
         IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
       current.push_back(next);
   }
-
-  return out;
 }
 
-Triangles Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out) const
+void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out) const
 {
   // todo: this is highly possibly to be problematic. Re-read this.
   assert(mountain.size() > 2);
@@ -398,8 +398,6 @@ Triangles Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out
       }
     }
   }
-
-  return out;
 }
 
 bool Triangulator::CheckTriangle(const Triangle &triangle) const
