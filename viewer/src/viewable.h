@@ -18,6 +18,7 @@ public:
   void SetOrigin(Vec2 origin);
   void SetBox(Vec2 box);
   void SetFocus(Vec2 focus);
+  void SetZoomFactor(float factor);
 
   void Draw(Vec2 origin, Vec2 factor);
   void GetBoundingBox(Vec2 &leftTop, Vec2 &rightBottom) const;
@@ -69,6 +70,7 @@ protected:
   Triangles _triangles;
 
   Vec2 _centroid, _origin, _factor, _box, _focus;
+  float _zoom = 1.f;
 
 #ifdef USE_EASYX
   inline int x(double ix) const { return static_cast<int>((ix - _centroid.x) * _factor.x + _origin.x); }

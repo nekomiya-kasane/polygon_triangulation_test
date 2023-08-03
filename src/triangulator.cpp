@@ -2,6 +2,10 @@
 
 #include <cassert>
 
+#include <functional>
+#include <queue>
+#include <random>
+
 Mountains Triangulator::ExtractMountains() const
 {
 #ifdef _DEBUG
@@ -261,8 +265,12 @@ Mountains Triangulator::ExtractMountains() const
 
 void Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
-  if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING)
+  if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_NORMAL)
     EarClipping(mountain, out, clockwise);
+  else if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_RANDOM)
+    EarClippingRandom(mountain, out, clockwise);
+  else if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_SORTED)
+    EarClippingSorted(mountain, out, clockwise);
   else if (configTri.mountainResolutionMethod == ConfigTri::CHIMNEY_CLIPPING_GREEDY)
     ChimneyClipping(mountain, out, clockwise);
   else
@@ -329,7 +337,7 @@ void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool cl
   assert(!current.empty());
 
   unsigned int cur = 0, n = m;
-  while (n-- >= 3)
+  while (n >= 3)
   {
     // get cut this ear
     cur = current.back();
@@ -348,7 +356,7 @@ void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool cl
     if (CheckTriangle(triangle))
       out.push_back(triangle);
 
-    if (n == 2)
+    if (--n == 2)
       break;
 
     prevs[next] = prev;
@@ -370,9 +378,196 @@ void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool cl
   }
 }
 
+void Triangulator::EarClippingRandom(const Mountain &mountain, Triangles &out, bool clockwise) const
+{
+  // [Monotone Mountain Triangulation] using a special ear clipping algorithm:
+  //   Initialize an empty list
+  //   Add all convex vertices, excluding the endpoints of the base, to the list
+  //   While list is not empty
+  //     Cut off the corresponding ear of the monotone mountain
+  //     Delete the vertex from the list
+  //     For the two neighbors of the vertex
+  //       if the neighboring vertex is not an endpoint of the base, and was made convex by cutting
+  //       off the ear, then add this neighbor to the list
+
+  unsigned int m = static_cast<unsigned int>(mountain.size());
+  if (m == 3)
+  // degenerated mountain
+  {
+    out.emplace_back(Triangle{_vertices[mountain[0]], _vertices[mountain[1]], _vertices[mountain[2]]});
+    return;
+  }
+
+  std::vector<unsigned int> prevs, nexts;
+
+  // static auto randomComparator = [](unsigned int left, unsigned int right) {
+  //   static auto randomBoolGenerator =
+  //       std::bind(std::uniform_int_distribution<>(0, 1), std::default_random_engine());
+  //   return randomBoolGenerator();
+  // };
+  // std::priority_queue<unsigned int, std::vector<unsigned int>, decltype(randomComparator)> current;
+
+  std::vector<unsigned int> current;
+
+  prevs.reserve(m);
+  nexts.reserve(m);
+
+  for (unsigned int i = 0; i < m; ++i)
+  {
+    prevs.push_back(i ? i - 1 : m - 1);
+    nexts.push_back(i == m - 1 ? 0 : i + 1);
+  }
+
+  for (unsigned int i = 1; i < m - 1; ++i)
+  // find all convex vertices
+  // first & last are vertices from the base segment, we don't consider them
+  {
+    if (IsConvex(mountain[prevs[i]], mountain[i], mountain[nexts[i]], clockwise))
+    {
+      current.push_back(i);
+    }
+  }
+  assert(!current.empty());
+
+  unsigned int cur = 0, n = m;
+  while (n >= 3)
+  {
+    // get cut this ear
+    std::vector<unsigned int>::iterator randIt = current.begin();
+    std::advance(randIt, std::rand() % current.size());
+    cur = *randIt;
+
+    if (!Valid(prevs[cur]))
+    {
+      assert(!Valid(nexts[cur]));
+      current.erase(randIt);
+      continue;
+    }
+
+    VertexID prev = prevs[cur], next = nexts[cur];
+
+    Triangle triangle =
+        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
+    if (CheckTriangle(triangle))
+      out.push_back(triangle);
+
+    if (--n == 2)
+      break;
+
+    prevs[next] = prev;
+    nexts[prev] = next;
+    prevs[cur] = nexts[cur] = INVALID_INDEX;
+
+    current.erase(randIt);
+
+    // prev neighbor
+    if (prev != m - 1 && prev &&
+        IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
+                 clockwise))  // not base && is convex
+      current.push_back(prev);
+
+    // next neighbor
+    if (next != m - 1 && next &&
+        IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
+      current.push_back(next);
+  }
+}
+
+void Triangulator::EarClippingSorted(const Mountain &mountain, Triangles &out, bool clockwise) const
+{
+  // todo: simplify this
+
+  unsigned int m = static_cast<unsigned int>(mountain.size());
+  if (m == 3)
+  // degenerated mountain
+  {
+    out.emplace_back(Triangle{_vertices[mountain[0]], _vertices[mountain[1]], _vertices[mountain[2]]});
+    return;
+  }
+
+  std::vector<unsigned int> prevs, nexts;
+  std::vector<double> angles;
+  prevs.reserve(m);
+  nexts.reserve(m);
+  angles.resize(m, 0);
+
+  auto angleComparator = [](const std::pair<unsigned int, double> &left,
+                            const std::pair<unsigned int, double> &right) -> bool {
+    return left.second <= right.second;
+  };
+  std::priority_queue<std::pair<unsigned int, double>, std::vector<std::pair<unsigned int, double>>,
+                      decltype(angleComparator)>
+      current;
+
+  for (unsigned int i = 0; i < m; ++i)
+  {
+    prevs.push_back(i ? i - 1 : m - 1);
+    nexts.push_back(i == m - 1 ? 0 : i + 1);
+  }
+
+  for (unsigned int i = 1; i < m - 1; ++i)
+  // find all convex vertices
+  // first & last are vertices from the base segment, we don't consider them
+  {
+    if (IsConvex(mountain[prevs[i]], mountain[i], mountain[nexts[i]], clockwise))
+    {
+      angles[i] = AngleCos(mountain[prevs[i]], mountain[i], mountain[nexts[i]]);
+      current.push({i, angles[i]});
+    }
+  }
+  assert(!current.empty());
+
+  unsigned int cur = 0, n = m;
+  while (n >= 3)
+  {
+    // get cut this ear
+    auto [cur, angle] = current.top();
+
+    if (!Valid(prevs[cur]) || angle != angles[cur])
+    {
+      assert(angle != angles[cur] || !Valid(nexts[cur]));
+      current.pop();
+      continue;
+    }
+
+    VertexID prev = prevs[cur], next = nexts[cur];
+
+    Triangle triangle =
+        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
+    if (CheckTriangle(triangle))
+      out.push_back(triangle);
+
+    if (--n == 2)
+      break;
+
+    prevs[next] = prev;
+    nexts[prev] = next;
+    prevs[cur] = nexts[cur] = INVALID_INDEX;
+
+    current.pop();
+
+    // prev neighbor
+    if (prev != m - 1 && prev)
+    {
+      angles[prev] = AngleCos(mountain[prevs[prev]], mountain[prev],
+                              mountain[nexts[prev]]);  // todo: is this needed to be evaluated every time?
+      if (IsConvex(mountain[prevs[prev]], mountain[prev], mountain[nexts[prev]],
+                   clockwise))  // not base && is convex
+        current.push({prev, angles[prev]});
+    }
+
+    // next neighbor
+    if (next != m - 1 && next)
+    {
+      angles[next] = AngleCos(mountain[prevs[next]], mountain[next], mountain[nexts[next]]);
+      if (IsConvex(mountain[prevs[next]], mountain[next], mountain[nexts[next]], clockwise))
+        current.push({next, angles[next]});
+    }
+  }
+}
+
 void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
-  // todo: this is highly possibly to be problematic. Re-read this.
   assert(mountain.size() > 2);
   std::vector<VertexID> stack = {mountain[0], mountain[1]};
 
@@ -504,4 +699,22 @@ bool Triangulator::IsConvex(const Vertex &prev,
 
   return clockwise ? cross >= 0. : cross <= 0.;  // todo: or use
                                                  // tolerance?
+}
+
+double Triangulator::AngleCos(VertexID prevID, VertexID currentID, VertexID nextID) const
+{
+  const Vertex &prev = _vertices[prevID], &current = _vertices[currentID], &next = _vertices[nextID];
+  return AngleCos(prev, current, next);
+}
+
+double Triangulator::AngleCos(const Vertex &prev, const Vertex &current, const Vertex &next) const
+{
+  if (IsZeroSize(prev, current, next))
+    return 0;
+
+  auto v = (next - current).GetNormalized(), u = (prev - current).GetNormalized();
+  double dot = v * u;
+
+  return dot;  // todo: or use
+               // tolerance?
 }

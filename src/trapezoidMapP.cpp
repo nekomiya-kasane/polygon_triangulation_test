@@ -119,14 +119,14 @@ void TrapezoidMapP::Build()
       break;
 
     // update vertex
-    for (size_t i = 0; i < _vertexRegions.size(); ++i)
-    {
-      NodeID &regionNodeID = _vertexRegions[i];
-      if (!Valid(regionNodeID))
-        continue;  // already added
+    // for (size_t i = 0; i < _vertexRegions.size(); ++i)
+    //{
+    //  NodeID &regionNodeID = _vertexRegions[i];
+    //  if (!Valid(regionNodeID))
+    //    continue;  // already added
 
-      regionNodeID = _regions[QueryFrom(regionNodeID, (VertexID)i)].nodeID;
-    }
+    //  regionNodeID = _regions[QueryFrom(regionNodeID, (VertexID)i)].nodeID;
+    //}
   }
 
 // assign depth

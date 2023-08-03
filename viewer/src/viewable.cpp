@@ -40,6 +40,11 @@ void ViewableTriangulator::SetFocus(Vec2 focus)
   _focus = focus;
 }
 
+void ViewableTriangulator::SetZoomFactor(float factor)
+{
+  _zoom = factor;
+}
+
 #pragma warning(push)
 #pragma warning(disable : 4244)
 void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
@@ -185,11 +190,11 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       DrawLineEx(pt[0], pt[1], 1.f, Fade(YELLOW, 0.35f));
 
       // draw points
-      DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, overrideColor ? color : RED);
-      DrawCircleLines(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius, WHITE);
+      DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius / _zoom, overrideColor ? color : RED);
+      DrawCircleLines(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius / _zoom, WHITE);
       DrawTextEx(drawingConfig.font, label.c_str(),
                  Vector2{x(vertex.x) + drawingConfig.vertexRadius, y(vertex.y) + drawingConfig.vertexRadius},
-                 20.f, 0.f, overrideColor ? color : RED);
+                 20.f / _zoom, 0.f, overrideColor ? color : RED);
     });
   }
 
@@ -200,9 +205,9 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
           const Vertex &highVertex = _vertices[segment.highVertex];
           const Vertex &lowVertex  = _vertices[segment.lowVertex];
           auto midX = (highVertex.x + lowVertex.x) / 2.f, midY = (highVertex.y + lowVertex.y) / 2.f;
-          DrawLineEx(Vector2{x(highVertex.x), y(highVertex.y)}, Vector2{x(lowVertex.x), y(lowVertex.y)}, 2,
-                     overrideColor ? color : BLUE);
-          DrawTextEx(drawingConfig.font, label.c_str(), Vector2{x(midX), y(midY)}, 20.f, 0.f,
+          DrawLineEx(Vector2{x(highVertex.x), y(highVertex.y)}, Vector2{x(lowVertex.x), y(lowVertex.y)},
+                     2 / _zoom, overrideColor ? color : BLUE);
+          DrawTextEx(drawingConfig.font, label.c_str(), Vector2{x(midX), y(midY)}, 20.f / _zoom, 0.f,
                      overrideColor ? color : BLUE);
         });
   }
@@ -244,6 +249,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       Vector2 pts[4] = {{lowHighX, lowY}, {lowLowX, lowY}, {highLowX, highY}, {highHighX, highY}};
       midX           = (lowHighX + lowLowX + highHighX + highLowX) / 4;
       midY           = (highY + lowY) / 2;
+
       assert(lowHighX >= 0 && lowHighX <= _box.x);
       assert(lowLowX >= 0 && lowLowX <= _box.x);
       assert(highLowX >= 0 && highLowX <= _box.x);
@@ -272,8 +278,8 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3f));
       DrawTriangle(pts[0], pts[2], pts[3], Fade(color, 0.3f));
 
-      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20.f, 0.f, color);
-      DrawCircle(static_cast<int>(midX), static_cast<int>(midY), 2, color);
+      DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20.f / _zoom, 0.f, color);
+      DrawCircle(static_cast<int>(midX), static_cast<int>(midY), 2 / _zoom, color);
     });
   }
 
@@ -292,7 +298,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
           float midX = (pts[0].x + pts[1].x + pts[2].x) / 3, midY = (pts[0].y + pts[1].y + pts[2].y) / 3;
 
           DrawTriangleLines(pts[0], pts[1], pts[2], overrideColor ? color : GREEN);
-          DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20, 0,
+          DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20 / _zoom, 0,
                      overrideColor ? color : GREEN);
         });
   }
@@ -303,10 +309,10 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
         [this](const Mountain &mountain, const std::string &label, Color color, bool overrideColor) {
           for (Mountain::size_type i = 0; i < mountain.size() - 1; ++i)
             DrawLineEx(Vector2{x(_vertices[mountain[i]].x), y(_vertices[mountain[i]].y)},
-                       Vector2{x(_vertices[mountain[i + 1]].x), y(_vertices[mountain[i + 1]].y)}, 2,
+                       Vector2{x(_vertices[mountain[i + 1]].x), y(_vertices[mountain[i + 1]].y)}, 2 / _zoom,
                        Fade(overrideColor ? color : PURPLE, 0.3f));
           DrawLineEx(Vector2{x(_vertices[mountain.back()].x), y(_vertices[mountain.back()].y)},
-                     Vector2{x(_vertices[mountain[0]].x), y(_vertices[mountain[0]].y)}, 2,
+                     Vector2{x(_vertices[mountain[0]].x), y(_vertices[mountain[0]].y)}, 2 / _zoom,
                      Fade(overrideColor ? color : PURPLE, 0.3f));
         });
   }
@@ -340,13 +346,11 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
     for (const auto &vertex : _vertices)
       (*methods.vertexDrawer)(vertex, "v" + std::to_string(i++), WHITE, false);
 
-  // write info
   std::stringstream ss;
   ss << "V: " << _vertices.Size() << " T: " << _triangles.size() << " R: " << _regions.Size() << "/"
      << _regions.Capability() << " N: " << _nodes.Size() << "/" << _nodes.Capability() << std::endl;
-  DrawTextEx(drawingConfig.font, ss.str().c_str(), {850.f, 8.f}, 24.f, 0.f, Fade(GREEN, 0.7f));
+  _infoBuf += ss.str();
 
-  // resolve indicators
   if (Valid(indicators.curRegionID) && !Infinite(indicators.curRegionID))
   {
     Region &region = _regions[indicators.curRegionID];
