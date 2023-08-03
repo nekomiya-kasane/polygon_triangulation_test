@@ -380,16 +380,6 @@ void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool cl
 
 void Triangulator::EarClippingRandom(const Mountain &mountain, Triangles &out, bool clockwise) const
 {
-  // [Monotone Mountain Triangulation] using a special ear clipping algorithm:
-  //   Initialize an empty list
-  //   Add all convex vertices, excluding the endpoints of the base, to the list
-  //   While list is not empty
-  //     Cut off the corresponding ear of the monotone mountain
-  //     Delete the vertex from the list
-  //     For the two neighbors of the vertex
-  //       if the neighboring vertex is not an endpoint of the base, and was made convex by cutting
-  //       off the ear, then add this neighbor to the list
-
   unsigned int m = static_cast<unsigned int>(mountain.size());
   if (m == 3)
   // degenerated mountain
