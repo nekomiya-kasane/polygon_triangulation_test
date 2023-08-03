@@ -99,7 +99,7 @@ void TrapezoidMapP::Build()
     double n       = _vertices.Size();
     while (n >= 1.0f)
     {
-      n = std::log2(n);
+      n = std::log(n);
       ++i;
     }
     config.phase = i - 1;

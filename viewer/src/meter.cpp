@@ -40,12 +40,11 @@ int main()
       {
         Triangulator tri;
         tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING;
-        tri.config.phase                       = 200;
         tri.AddPolygon(points[0], true);
         tri.config.useGivenSeed = true;
         tri.Build();
         tri.Triangulate();
-        interval += (timer.now() - start).count() / 1e9;
+        interval = (timer.now() - start).count() / 1e9;
       }
       catch (...)
       {
