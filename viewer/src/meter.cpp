@@ -14,7 +14,7 @@ int main()
 
   std::vector<std::pair<int, double>> data;
 
-  for (int i : {10, 50, 100, 500, 1000, 5000, 10000, 50000})
+  for (int i : {1000, 5000, 10000, 50000})
   {
     interval = 0;
 
@@ -40,16 +40,18 @@ int main()
       {
         Triangulator tri;
         tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING;
+        tri.config.phase                       = 200;
         tri.AddPolygon(points[0], true);
+        tri.config.useGivenSeed = true;
         tri.Build();
         tri.Triangulate();
+        interval += (timer.now() - start).count() / 1e9;
       }
       catch (...)
       {
         j--;
         continue;
       }
-      interval += (timer.now() - start).count() / 1e9;
     }
     interval /= m;
 
