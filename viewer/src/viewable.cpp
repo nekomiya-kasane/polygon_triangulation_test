@@ -187,7 +187,12 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       {
         pt[1].x = evalX(y(vertex.y), _segments[rightRegion.right]);
       }
-      DrawLineEx(pt[0], pt[1], 1.f, Fade(YELLOW, 0.35f));
+      DrawLineEx(pt[0], pt[1], 1.f / _zoom, Fade(YELLOW, 0.35f));
+
+      // indicator
+      if (std::abs(_focus.x - x(vertex.x)) <= drawingConfig.vertexRadius &&
+          std::abs(_focus.y - y(vertex.y)) <= drawingConfig.vertexRadius)
+        indicators.curVertexID = _vertices.GetIndex(&vertex);
 
       // draw points
       DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius / _zoom, overrideColor ? color : RED);
@@ -347,8 +352,9 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       (*methods.vertexDrawer)(vertex, "v" + std::to_string(i++), WHITE, false);
 
   std::stringstream ss;
-  ss << "V: " << _vertices.Size() << " T: " << _triangles.size() << " R: " << _regions.Size() << "/"
-     << _regions.Capability() << " N: " << _nodes.Size() << "/" << _nodes.Capability() << std::endl;
+  ss << "D: " << config.seed << " V: " << _vertices.Size() << " T: " << _triangles.size()
+     << " R: " << _regions.Size() << "/" << _regions.Capability() << " N: " << _nodes.Size() << "/"
+     << _nodes.Capability() << std::endl;
   _infoBuf += ss.str();
 
   if (Valid(indicators.curRegionID) && !Infinite(indicators.curRegionID))
@@ -378,7 +384,16 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
         (*methods.vertexDrawer)(_vertices[region.high], "v" + std::to_string(region.high), WHITE, true);
     }
 
-    _infoBuf += "S" + std::to_string(_regions.GetIndex(&region)) + ": " + region.ToString() + "\n";
+    _infoBuf += "S" + std::to_string(indicators.curRegionID) + ": " + region.ToString() + "\n";
+  }
+
+  if (Valid(indicators.curVertexID) && !Infinite(indicators.curVertexID) && methods.vertexDrawer)
+  {
+    const Vertex &vertex = _vertices[indicators.curVertexID];
+    (*methods.vertexDrawer)(vertex, "v" + std::to_string(indicators.curVertexID), YELLOW, true);
+
+    _infoBuf += "V" + std::to_string(indicators.curVertexID) + ": (" + std::to_string(vertex.x) + ", " +
+                std::to_string(vertex.y) + ")\n";
   }
 }
 #pragma warning(pop)

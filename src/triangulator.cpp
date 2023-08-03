@@ -705,6 +705,5 @@ double Triangulator::AngleCos(const Vertex &prev, const Vertex &current, const V
   auto v = (next - current).GetNormalized(), u = (prev - current).GetNormalized();
   double dot = v * u;
 
-  return dot;  // todo: or use
-               // tolerance?
+  return dot;
 }

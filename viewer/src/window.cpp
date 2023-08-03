@@ -93,6 +93,7 @@ struct States
 {
   bool drawGrid                = false;
   bool generateRandom          = false;
+  bool randomSeed              = false;
   bool useSculpingGenerator    = true;
   bool allowHole               = true;
   bool mountTriDropdownPressed = false;
@@ -230,7 +231,8 @@ bool ResolveConfig(Triangulator &tri)
 
 void ResolveGeneration()
 {
-  auto randomInfoText   = "[ ] Generate random " + std::to_string(states.generateRandomSize);
+  auto randomInfoText   = "[ ] Random Polygon " + std::to_string(states.generateRandomSize);
+  states.randomSeed     = GuiLabelButton(RealRect(250, screenHeight - 30, 20, 20), "[ ] Random Seed ");
   states.generateRandom = GuiLabelButton(RealRect(10, screenHeight - 30, 20, 20), randomInfoText.c_str());
   states.useSculpingGenerator = GuiCheckBox(RealRect(10, screenHeight - 60, 20, 20),
                                             " Use sculpting generator ", states.useSculpingGenerator);
@@ -297,40 +299,51 @@ bool GeneratePoints()
       return false;
     tri.GetBoundingBox(lt, rb);
   }
+  if (states.randomSeed)
+  {
+    tri.config.seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  }
   return true;
 }
 
 int main()
 {
-  points = {{{29, 19},
-             {335, 60},
-             {398, 108},
-             {516, 220},
-             {507, 468},
-             {531, 469},
-             {549, 367},
-             {571, 26},
-             {733, 72},
-             {859, 416},
-             {848, 599},
-             {738, 639},
-             {832, 687},
-             {849, 741},
-             {792, 769},
-             {248, 872},
-             {227, 886},
-             {136, 895},
-             {133, 877}}};
-  // std::vector<Vec2Set> points = {
-  //     {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0, 40}}};
-  //  std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2,
-  //  -2}},
-  //                                 {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4,
-  //                                 -4}},
-  //                                 {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6,
-  //                                 -6}},
-  //                                 {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8,
-  //                                 -8}}};
+  points = {
+      {{192, 470},  {280, 316},  {450, 383},  {399, 309},  {289, 152},  {334, 138},  {788, 146},
+       {812, 187},  {714, 305},  {829, 406},  {928, 338},  {966, 307},  {948, 248},  {832, 108},
+       {1395, 175}, {1728, 110}, {1487, 330}, {1533, 403}, {1657, 425}, {1724, 685}, {1673, 792},
+       {1625, 793}, {1176, 972}, {219, 953},  {391, 560}},
+      {{415, 806}, {564, 677}, {906, 582}, {1218, 421}, {1287, 467}, {1193, 574}, {1169, 718}, {1281, 788}}};
+
+  // points = {{{29, 19},
+  //            {335, 60},
+  //            {398, 108},
+  //            {516, 220},
+  //            {507, 468},
+  //            {531, 469},
+  //            {549, 367},
+  //            {571, 26},
+  //            {733, 72},
+  //            {859, 416},
+  //            {848, 599},
+  //            {738, 639},
+  //            {832, 687},
+  //            {849, 741},
+  //            {792, 769},
+  //            {248, 872},
+  //            {227, 886},
+  //            {136, 895},
+  //            {133, 877}}};
+  //  std::vector<Vec2Set> points = {
+  //      {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0, 40}}};
+  //   std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2,
+  //   -2}},
+  //                                  {{-3, -3}, {-3, 3}, {3, 3}, {3, -3}}, {{-4, -4}, {-4, 4}, {4, 4}, {4,
+  //                                  -4}},
+  //                                  {{-5, -5}, {-5, 5}, {5, 5}, {5, -5}}, {{-6, -6}, {-6, 6}, {6, 6}, {6,
+  //                                  -6}},
+  //                                  {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8,
+  //                                  -8}}};
 
   // std::vector<Vec2Set> points = {{{2, 2}, {2, -2}, {0, -2}, {1, 0}, {-1, 0}, {0, -2}, {-2, -2}, {-2, 2}}};
 
@@ -371,7 +384,7 @@ int main()
     if (!GeneratePoints())
       continue;
 
-    if (ResolveConfig(tri) || first || states.generateRandom)
+    if (ResolveConfig(tri) || first || states.generateRandom || states.randomSeed)
     {
       tri.ClearCache();
       tri.Build();
@@ -379,12 +392,14 @@ int main()
 
       first                 = false;
       states.generateRandom = false;
+      states.randomSeed     = false;
     }
 
     tri._infoBuf.clear();
     tri._infoBuf += "Screen Pos: (" + std::to_string(int(mousePos.x)) + ", " +
                     std::to_string(int(mousePos.y)) + ") World Pos: (" + std::to_string(worldMousePos.x) +
-                    ", " + std::to_string(worldMousePos.y) + ") Zoom: " + std::to_string(camera.zoom) + "\n";
+                    ", " + std::to_string(screenHeight - worldMousePos.y) +
+                    ") Zoom: " + std::to_string(camera.zoom) + "\n";
 
     // draw the shape
     auto realPos = RealPos({mousePos.x, mousePos.y});
