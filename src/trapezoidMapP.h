@@ -77,7 +77,7 @@ SEIDEL_PRIVATE:
   // clang-format on
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
-  Allocator<VertexID> _endVertices, _prevVertices;
+  Allocator<VertexID> _endVertices, _prevVertices, _endDirVertices, _prevDirVertices;
 
   /// for vertex queries
   struct VertexNeighborInfo

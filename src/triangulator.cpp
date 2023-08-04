@@ -6,6 +6,8 @@
 #include <queue>
 #include <random>
 
+#include "threadPool.h"
+
 Mountains Triangulator::ExtractMountains() const
 {
 #ifdef _DEBUG
@@ -37,7 +39,7 @@ Mountains Triangulator::ExtractMountains() const
 
       while (curRegionPtr->high != leftSegment.lowVertex)
       {
-        if (mountain.empty() || mountain.back() != curRegionPtr->high)
+        if (mountain.back() != curRegionPtr->high)
           mountain.push_back(curRegionPtr->high);
 
         leftSegmentVisited[_regions.GetIndex(curRegionPtr)] = true;
@@ -134,11 +136,12 @@ Mountains Triangulator::ExtractMountains() const
 
       const auto &tln = _lowNeighbors[baseVertexID];  // top low neighbors
       const Region *curRegionPtr =
-          _regions[tln.left].left == rightSegmentID ? &_regions[tln.left] : &_regions[tln.mid];
+          _regions[tln.left].right == rightSegmentID ? &_regions[tln.left] : &_regions[tln.mid];
+      assert(_regions.GetIndex(curRegionPtr) >= 0);
 
       while (curRegionPtr->high != rightSegment.lowVertex)
       {
-        if (mountain.empty() || mountain.back() != curRegionPtr->high)
+        if (mountain.back() != curRegionPtr->high)
           mountain.push_back(curRegionPtr->high);
 
         rightSegmentVisited[_regions.GetIndex(curRegionPtr)] = true;
@@ -263,31 +266,60 @@ Mountains Triangulator::ExtractMountains() const
   return mountains;
 }
 
-void Triangulator::TriangulateMountain(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::TriangulateMountain(const Mountain &mountain,
+                                       Triangles &out,
+                                       bool clockwise,
+                                       unsigned int baseID) const
 {
+  if (mountain.size() < 3)
+    return;
+
   if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_NORMAL)
-    EarClipping(mountain, out, clockwise);
+    EarClipping(mountain, out, clockwise, baseID);
   else if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_RANDOM)
-    EarClippingRandom(mountain, out, clockwise);
+    EarClippingRandom(mountain, out, clockwise, baseID);
   else if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_SORTED)
-    EarClippingSorted(mountain, out, clockwise);
+    EarClippingSorted(mountain, out, clockwise, baseID);
   else if (configTri.mountainResolutionMethod == ConfigTri::CHIMNEY_CLIPPING_GREEDY)
-    ChimneyClipping(mountain, out, clockwise);
+    ChimneyClipping(mountain, out, clockwise, baseID);
   else
-    ChimneyClipping2(mountain, out, clockwise);
+    ChimneyClipping2(mountain, out, clockwise, baseID);
 }
 
 Triangles Triangulator::Triangulate() const
 {
-  Triangles triangles;
-  triangles.reserve(_vertices.Size());
-
   Mountains mountains = ExtractMountains();
+
+  Triangles triangles;
 
 #ifdef _DEBUG
   if (!config.triangulation)
     return triangles;
 #endif
+
+  if (configTri.multithreading)
+  {
+    triangles.resize(_vertices.Size() - 2);
+
+    static ThreadPool threadPool(std::thread::hardware_concurrency());
+    const size_t jobs = threadPool.getNumThreads();
+
+    if (jobs > 1 && !threadPool.isWorkerThread() && mountains.size() > 1)
+    {
+      unsigned int baseID = 0;
+      for (const auto &[mountain, cw] : mountains)
+      {
+        threadPool.enqueue([&mountain, &triangles, cw, baseID, this] {
+          return TriangulateMountain(mountain, triangles, cw, baseID);
+        });
+        baseID += mountain.size() - 2;
+      }
+      triangles.resize(baseID);
+      return triangles;
+    }
+  }
+
+  triangles.reserve(_vertices.Size());
 
   for (const auto &[mountain, cw] : mountains)
     TriangulateMountain(mountain, triangles, cw);
@@ -295,7 +327,10 @@ Triangles Triangulator::Triangulate() const
   return triangles;
 }
 
-void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::EarClipping(const Mountain &mountain,
+                               Triangles &out,
+                               bool clockwise,
+                               unsigned int baseID) const
 {
   // [Monotone Mountain Triangulation] using a special ear clipping algorithm:
   //   Initialize an empty list
@@ -351,10 +386,15 @@ void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool cl
 
     VertexID prev = prevs[cur], next = nexts[cur];
 
-    Triangle triangle =
-        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
-    if (CheckTriangle(triangle))
-      out.push_back(triangle);
+    if (baseID == -1)
+    {
+      out.emplace_back(_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]);
+      if (!CheckTriangle(out.back()))
+        out.pop_back();
+    }
+    else  // cannot be discarded
+      out[n - 3 + baseID] =
+          Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
 
     if (--n == 2)
       break;
@@ -378,7 +418,10 @@ void Triangulator::EarClipping(const Mountain &mountain, Triangles &out, bool cl
   }
 }
 
-void Triangulator::EarClippingRandom(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::EarClippingRandom(const Mountain &mountain,
+                                     Triangles &out,
+                                     bool clockwise,
+                                     unsigned int baseID) const
 {
   unsigned int m = static_cast<unsigned int>(mountain.size());
   if (m == 3)
@@ -436,10 +479,15 @@ void Triangulator::EarClippingRandom(const Mountain &mountain, Triangles &out, b
 
     VertexID prev = prevs[cur], next = nexts[cur];
 
-    Triangle triangle =
-        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
-    if (CheckTriangle(triangle))
-      out.push_back(triangle);
+    if (baseID == -1)
+    {
+      out.emplace_back(_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]);
+      if (!CheckTriangle(out.back()))
+        out.pop_back();
+    }
+    else  // cannot be discarded
+      out[n - 3 + baseID] =
+          Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
 
     if (--n == 2)
       break;
@@ -463,7 +511,10 @@ void Triangulator::EarClippingRandom(const Mountain &mountain, Triangles &out, b
   }
 }
 
-void Triangulator::EarClippingSorted(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::EarClippingSorted(const Mountain &mountain,
+                                     Triangles &out,
+                                     bool clockwise,
+                                     unsigned int baseID) const
 {
   // todo: simplify this
 
@@ -522,10 +573,15 @@ void Triangulator::EarClippingSorted(const Mountain &mountain, Triangles &out, b
 
     VertexID prev = prevs[cur], next = nexts[cur];
 
-    Triangle triangle =
-        Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
-    if (CheckTriangle(triangle))
-      out.push_back(triangle);
+    if (baseID == -1)
+    {
+      out.emplace_back(_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]);
+      if (!CheckTriangle(out.back()))
+        out.pop_back();
+    }
+    else  // cannot be discarded
+      out[n - 3 + baseID] =
+          Triangle{_vertices[mountain[prev]], _vertices[mountain[cur]], _vertices[mountain[next]]};
 
     if (--n == 2)
       break;
@@ -556,7 +612,10 @@ void Triangulator::EarClippingSorted(const Mountain &mountain, Triangles &out, b
   }
 }
 
-void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::ChimneyClipping(const Mountain &mountain,
+                                   Triangles &out,
+                                   bool clockwise,
+                                   unsigned int baseID) const
 {
   assert(mountain.size() > 2);
   std::vector<VertexID> stack = {mountain[0], mountain[1]};
@@ -571,9 +630,15 @@ void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out, boo
       stack.push_back(next);
     else
     {
-      Triangle triangle = Triangle{_vertices[prev], _vertices[current], _vertices[next]};
-      if (CheckTriangle(triangle))
-        out.push_back(triangle);
+      if (baseID == -1)
+      {
+        out.emplace_back(_vertices[prev], _vertices[current], _vertices[next]);
+        if (!CheckTriangle(out.back()))
+          out.pop_back();
+      }
+      else  // cannot be discarded
+        out[i - 2 + baseID] = Triangle{_vertices[prev], _vertices[current], _vertices[next]};
+
       current = next;
       stack.pop_back();
 
@@ -586,7 +651,10 @@ void Triangulator::ChimneyClipping(const Mountain &mountain, Triangles &out, boo
   }
 }
 
-void Triangulator::ChimneyClipping2(const Mountain &mountain, Triangles &out, bool clockwise) const
+void Triangulator::ChimneyClipping2(const Mountain &mountain,
+                                    Triangles &out,
+                                    bool clockwise,
+                                    unsigned int baseID) const
 {
   // todo: this is highly possibly to be problematic. Re-read this.
   assert(mountain.size() > 2);
@@ -604,9 +672,14 @@ void Triangulator::ChimneyClipping2(const Mountain &mountain, Triangles &out, bo
     {
       while (IsConvex(prev, current, next, clockwise))
       {
-        Triangle triangle = Triangle{_vertices[prev], _vertices[current], _vertices[next]};
-        if (CheckTriangle(triangle))
-          out.push_back(triangle);
+        if (baseID == -1)
+        {
+          out.emplace_back(_vertices[prev], _vertices[current], _vertices[next]);
+          if (!CheckTriangle(out.back()))
+            out.pop_back();
+        }
+        else  // cannot be discarded
+          out[i - 2 + baseID] = Triangle{_vertices[prev], _vertices[current], _vertices[next]};
 
         stack.pop_back();
         if (stack.size() < 2)

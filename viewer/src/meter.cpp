@@ -16,7 +16,7 @@ auto since(std::chrono::time_point<clock_t, duration_t> const &start)
 int main()
 {
   std::chrono::high_resolution_clock timer;
-  int m           = 5;
+  int m           = 1;
   double interval = 0;
 
   std::vector<std::pair<int, double>> data;
@@ -27,23 +27,23 @@ int main()
     std::cout << "Generating points ... ";
     // auto points = PolygonGenerator::GenerateRandomPolygonBySculpting(std::pow(10, i), -1e5, 1e5);
 
-    auto points = PolygonGenerator::GenerateRandomPolygon(i, -1e3, 1e3, -1e3, 1e3);
-
-    std::fstream file(std::to_string(i) + ".txt", std::ios::ate | std::ios::out);
-    for (auto &point : points[0])
-    {
-      file << "{" << point.x << "," << point.y << "},\n";
-    }
-    file.close();
+    // std::fstream file(std::to_string(i) + ".txt", std::ios::ate | std::ios::out);
+    // for (auto &point : points[0])
+    //{
+    //   file << "{" << point.x << "," << point.y << "},\n";
+    // }
+    // file.close();
 
     interval = 0;
     std::cout << "Triangulating ... ";
     for (int j = 0; j < m; ++j)
     {
-      auto start = std::chrono::steady_clock::now();
+      auto points = PolygonGenerator::GenerateRandomPolygon(i, -1e3, 1e3, -1e3, 1e3);
+      auto start  = std::chrono::steady_clock::now();
       try
       {
         Triangulator tri;
+        tri.configTri.multithreading           = false;
         tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_GREEDY;
         tri.AddPolygon(points[0], true);
         tri.Build();
