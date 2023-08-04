@@ -1153,9 +1153,16 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
   const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
 
-  int res = Higher(leftVertex, rightVertex);
-  if (res > -1)
-    return !!res;
+  if (leftVertex.y > rightVertex.y)
+    return true;
+  if (leftVertex.y < rightVertex.y)
+    return false;
+
+  // same y
+  if (leftVertex.x < rightVertex.x)
+    return true;
+  if (leftVertex.x > rightVertex.x)
+    return false;
 
   // same x, y: latter vertex always on the right, is this OK?
   // todo: in paper, another random integer is assigned to determine this.
@@ -1183,9 +1190,10 @@ bool TrapezoidMapP::Higher(VertexID refVertexID, VertexID highVertexID, VertexID
 {
   const Vertex &refVertex = _vertices[refVertexID], &highVertex = _vertices[highVertexID],
                &lowVertex = _vertices[lowVertexID];
-  int res                 = Higher(refVertex, highVertex, lowVertex);
-  if (res > -1)
-    return !!res;
+  auto highLow            = highVertex - lowVertex;
+  double cross            = highLow ^ (refVertex - lowVertex);
+  if (cross != 0.)
+    return cross > 0;
 
   return refVertexID < std::min(highVertexID, lowVertexID);
 }

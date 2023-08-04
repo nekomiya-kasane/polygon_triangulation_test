@@ -286,6 +286,36 @@ void Triangulator::TriangulateMountain(const Mountain &mountain,
     ChimneyClipping2(mountain, out, clockwise, baseID);
 }
 
+void Triangulator::TriangulateMountainProxy(const Mountains &mountains,
+                                            unsigned int baseCount,
+                                            unsigned int count,
+                                            Triangles &out,
+                                            unsigned int baseID) const
+{
+  for (unsigned int i = baseCount,
+                    n = std::min(static_cast<unsigned int>(mountains.size()) - baseCount, count);
+       i < n; ++i)
+  {
+    const auto &mountain = mountains[i].first;
+    bool clockwise       = mountains[i].second;
+    if (mountain.size() < 3 )
+      continue;
+
+    if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_NORMAL)
+      EarClipping(mountain, out, clockwise, baseID);
+    else if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_RANDOM)
+      EarClippingRandom(mountain, out, clockwise, baseID);
+    else if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_SORTED)
+      EarClippingSorted(mountain, out, clockwise, baseID);
+    else if (configTri.mountainResolutionMethod == ConfigTri::CHIMNEY_CLIPPING_GREEDY)
+      ChimneyClipping(mountain, out, clockwise, baseID);
+    else
+      ChimneyClipping2(mountain, out, clockwise, baseID);
+
+    baseID += mountain.size() - 2;
+  }
+}
+
 Triangles Triangulator::Triangulate() const
 {
   Mountains mountains = ExtractMountains();
@@ -306,12 +336,17 @@ Triangles Triangulator::Triangulate() const
 
     if (jobs > 1 && !threadPool.isWorkerThread() && mountains.size() > 1)
     {
-      unsigned int baseID = 0;
+      unsigned int baseID = 0, baseCount = 0, count = 0;
       for (const auto &[mountain, cw] : mountains)
       {
-        threadPool.enqueue([&mountain, &triangles, cw, baseID, this] {
-          return TriangulateMountain(mountain, triangles, cw, baseID);
-        });
+        if (++count == 3000)
+        {
+          threadPool.enqueue([&mountains, &triangles, cw, baseCount, baseID, this] {
+            return TriangulateMountainProxy(mountains, baseCount, 3000, triangles, baseID);
+          });
+          count = 0;
+          baseCount += 3000;
+        }
         baseID += mountain.size() - 2;
       }
       triangles.resize(baseID);

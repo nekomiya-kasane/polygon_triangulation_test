@@ -21,7 +21,7 @@ int main()
 
   std::vector<std::pair<int, double>> data;
 
-  for (int i : {100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400})
+  for (int i : {/*100, 200, 400, 800, 1600, 3200, 6400, 12800, */ 25600, 51200, 102400})
   {
     std::cout << "#points = " << i << std::endl;
     std::cout << "Generating points ... ";
@@ -43,18 +43,18 @@ int main()
       try
       {
         Triangulator tri;
-        tri.configTri.multithreading           = false;
+        tri.configTri.multithreading           = true;
         tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_GREEDY;
         tri.AddPolygon(points[0], true);
         tri.Build();
         tri.Triangulate();
+        interval += since(start).count() / 1e9;
       }
       catch (...)
       {
         j--;
         continue;
       }
-      interval += since(start).count() / 1e9;
     }
     interval /= m;
 

@@ -67,6 +67,11 @@ public:
 protected:
   virtual Mountains ExtractMountains() const;
 
+  void TriangulateMountainProxy(const Mountains &mountains,
+                                unsigned int baseCount,
+                                unsigned int count,
+                                Triangles &out,
+                                unsigned int baseID = -1) const;
   void TriangulateMountain(const Mountain &mountain,
                            Triangles &out,
                            bool clockwise,
