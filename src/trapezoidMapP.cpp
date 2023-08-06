@@ -23,7 +23,7 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
   _endDirVertices.ResizeRaw(_endDirVertices.Size() + incrementSize);
   _prevDirVertices.ResizeRaw(_prevDirVertices.Size() + incrementSize);
 
-  _vertexCount += points.size(); // original count
+  _vertexCount += points.size();   // original count
   _segmentCount += points.size();  // original count
 
   // todo: memcpy costs too much time for large polygon
@@ -813,7 +813,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       leftDownward         = leftSegment.downward;
       leftHighVertexID = leftSegment.highVertex, leftLowVertexID = leftSegment.lowVertex;
     }
-    if (Intersected(leftHighVertexID, leftLowVertexID, highVertexID, lowVertexID, &intersection))
+    if (Intersected(leftHighVertexID, leftLowVertexID, highVertexID, lowVertexID, &intersection) == 1)
     {
       // split vertices
       VertexID leftNewVertexID = AppendVertex(intersection), rightNewVertexID = AppendVertex(intersection);
@@ -954,7 +954,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       rightDownward         = rightSegment.downward;
       rightHighVertexID = rightSegment.highVertex, rightLowVertexID = rightSegment.lowVertex;
     }
-    if (Intersected(rightHighVertexID, rightLowVertexID, highVertexID, lowVertexID, &intersection))
+    if (Intersected(rightHighVertexID, rightLowVertexID, highVertexID, lowVertexID, &intersection) == 1)
     {
       // split vertices
       VertexID leftNewVertexID = AppendVertex(intersection), rightNewVertexID = AppendVertex(intersection);
@@ -1275,23 +1275,24 @@ int TrapezoidMapP::Intersected(VertexID segment1_Start,
 
   double s_numer = vec1 ^ s2s1;
   if ((s_numer < 0) == denomPositive)
-    return false;  // No collision
+    return 0;  // No collision
 
   double t_numer = vec2 ^ s2s1;
   if ((t_numer < 0) == denomPositive)
-    return false;  // No collision
+    return 0;  // No collision
 
   if (((s_numer > denom) == denomPositive) || ((t_numer > denom) == denomPositive))
-    return false;  // No collision
+    return 0;  // No collision
 
   // intersected
-  if (!intersection)
-    return true;
-
   double t = t_numer / denom;
+
+  int intersectionFlag = t != 1.0 && t != 0.0 ? 1 : -1;
+  if (!intersection)
+    return intersectionFlag;
 
   intersection->x = s1.x + (t * vec1.x);
   intersection->y = s1.y + (t * vec1.y);
 
-  return t != 1.0 && t != 0.0;
+  return intersectionFlag;
 }
