@@ -343,8 +343,12 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
 
   i = 0;
   if (methods.segmentDrawer)
+  {
     for (const auto &segmentID : _permutation)
       (*methods.segmentDrawer)(_segments[segmentID], "e" + std::to_string(segmentID), WHITE, false);
+    for (SegmentID i = _segmentCount; i < _segments.Size(); ++i)
+      (*methods.segmentDrawer)(_segments[i], "e" + std::to_string(i), WHITE, false);
+  }
 
   i = 0;
   if (methods.vertexDrawer)

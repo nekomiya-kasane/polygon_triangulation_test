@@ -78,6 +78,7 @@ SEIDEL_PRIVATE:
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
   Allocator<VertexID> _endVertices, _prevVertices, _endDirVertices, _prevDirVertices;
+  AnyID _vertexCount = 0, _segmentCount = 0;
 
   /// for vertex queries
   struct VertexNeighborInfo

@@ -276,29 +276,6 @@ bool GeneratePoints()
                                                states.generateRandomSize, 0, 1000, 0, 1000, states.allowHole)
                                          : PolygonGenerator::GenerateRandomPolygon(states.generateRandomSize);
   }
-  if (first || states.generateRandom)
-  {
-    tri.Reset();
-    size_t i = 0;
-    for (const auto &contour : points)
-    {
-      if (contour.size() < 3)
-        continue;
-#  ifdef _DEBUG
-      if (tri.config.printData)
-      {
-        std::cout << i++ << " {";
-        for (const auto &point : contour)
-          std::cout << "{" << (int)point.x << ", " << (int)point.y << "}, ";
-        std::cout << "}";
-      }
-#  endif
-      tri.AddPolygon(contour, true);
-    }
-    if (!tri._vertices.Size())
-      return false;
-    tri.GetBoundingBox(lt, rb);
-  }
   if (states.randomSeed)
   {
     tri.config.seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
@@ -309,6 +286,7 @@ bool GeneratePoints()
 int main()
 {
   tri.config.checkIntersection = true;
+  tri.config.maxSegment        = 3;
   //  points = {
   //      {{192, 470},  {280, 316},  {450, 383},  {399, 309},  {289, 152},  {334, 138},  {788, 146},
   //       {812, 187},  {714, 305},  {829, 406},  {928, 338},  {966, 307},  {948, 248},  {832, 108},
@@ -390,7 +368,30 @@ int main()
 
     if (ResolveConfig(tri) || first || states.generateRandom || states.randomSeed)
     {
-      tri.ClearCache();
+     // if (first || states.generateRandom)
+    //  {
+        tri.Reset();
+        size_t i = 0;
+        for (const auto &contour : points)
+        {
+          if (contour.size() < 3)
+            continue;
+#  ifdef _DEBUG
+          if (tri.config.printData)
+          {
+            std::cout << i++ << " {";
+            for (const auto &point : contour)
+              std::cout << "{" << (int)point.x << ", " << (int)point.y << "}, ";
+            std::cout << "}";
+          }
+#  endif
+          tri.AddPolygon(contour, true);
+        }
+        if (!tri._vertices.Size())
+          return false;
+        tri.GetBoundingBox(lt, rb);
+  //    }
+
       tri.Build();
       tri.Triangulate();
 

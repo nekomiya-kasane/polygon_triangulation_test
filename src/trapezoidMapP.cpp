@@ -23,6 +23,9 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
   _endDirVertices.ResizeRaw(_endDirVertices.Size() + incrementSize);
   _prevDirVertices.ResizeRaw(_prevDirVertices.Size() + incrementSize);
 
+  _vertexCount += points.size(); // original count
+  _segmentCount += points.size();  // original count
+
   // todo: memcpy costs too much time for large polygon
   _vertices.Pushback(points.data(), incrementSize);
 
@@ -178,10 +181,13 @@ void TrapezoidMapP::Reset()
 {
   _vertices.Reset();
   _segments.Reset();
+  _vertexCount = _segmentCount = 0;
+
   _prevVertices.Reset();
   _endVertices.Reset();
   _prevDirVertices.Reset();
   _endDirVertices.Reset();
+
   ClearCache();
 }
 
@@ -225,9 +231,9 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
 
   SegmentID splittedSegment = INVALID_INDEX;
 
+  int type = -3 /* initial value */;
   while (Valid(segmentID))
   {
-    int type;
     Segment &segment          = _segments[segmentID];
     RegionID originalRegionID = GetFirstIntersectedRegion(segment.highVertex, segment.lowVertex, &type);
     Region &originalRegion    = _regions[originalRegionID];
@@ -1252,7 +1258,8 @@ int TrapezoidMapP::Intersected(VertexID segment1_Start,
                                VertexID segment1_End,
                                VertexID segment2_Start,
                                VertexID segment2_End,
-                               Vertex *const intersection, int* type) const
+                               Vertex *const intersection,
+                               int *type) const
 {
   // todo: return int for intersected at mid/endpoint and not intersected.
   const Vertex &s1 = _vertices[segment1_Start], &e1 = _vertices[segment1_End],
@@ -1286,5 +1293,5 @@ int TrapezoidMapP::Intersected(VertexID segment1_Start,
   intersection->x = s1.x + (t * vec1.x);
   intersection->y = s1.y + (t * vec1.y);
 
-  return true;
+  return t != 1.0 && t != 0.0;
 }
