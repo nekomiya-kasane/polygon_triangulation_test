@@ -18,6 +18,7 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 
   _vertices.Reserve(_vertices.Size() + incrementSize);
   _segments.Reserve(_endVertices.Size() + incrementSize);
+  _positionNumber.reserve(_vertices.Size() + incrementSize);
   _endVertices.ResizeRaw(_endVertices.Size() + incrementSize);
   _prevVertices.ResizeRaw(_prevVertices.Size() + incrementSize);
   _endDirVertices.ResizeRaw(_endDirVertices.Size() + incrementSize);
@@ -28,6 +29,8 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 
   // todo: memcpy costs too much time for large polygon
   _vertices.Pushback(points.data(), incrementSize);
+  for (const auto &point : points)
+    _positionNumber.push_back(_positionNumber.size());
 
   // fill ends
   auto appendSegment = [this](VertexID from, VertexID to) {
@@ -181,6 +184,7 @@ void TrapezoidMapP::Reset()
 {
   _vertices.Reset();
   _segments.Reset();
+  _positionNumber.clear();
   _vertexCount = _segmentCount = 0;
 
   _prevVertices.Reset();
@@ -239,7 +243,7 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
     Region &originalRegion    = _regions[originalRegionID];
 
     if (config.checkIntersection)
-      splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+      splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != -2, type != 2);
 
     SplitRegionBySegment(originalRegionID, segmentID, type);
 
@@ -248,7 +252,7 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
       originalRegionID = _nextRegion;
       if (config.checkIntersection)
       {
-        splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+        splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != -2, type != 2);
       }
       SplitRegionBySegment(originalRegionID, segmentID, type);
     }
@@ -279,16 +283,14 @@ RegionID TrapezoidMapP::QueryFrom(NodeID nodeID, VertexID vertexIDtoQuery)
     else
     {
       assert(type == Node::SEGMENT);
-      const Segment &segment = _segments[node->value];
-      node = Higher(vertexIDtoQuery, segment.highVertex, segment.lowVertex) ? &_nodes[node->left]
-                                                                            : &_nodes[node->right];
+      node = HigherVS(vertexIDtoQuery, node->value) ? &_nodes[node->left] : &_nodes[node->right];
     }
     type = node->type;
   }
   return node->value;
 }
 
-VertexID TrapezoidMapP::AppendVertex(const Vertex &vertex)
+VertexID TrapezoidMapP::AppendVertex(const Vertex &vertex, int positionNum)
 {
   assert(_vertices.Size() == _endVertices.Size());
   assert(_vertices.Size() == _prevVertices.Size());
@@ -300,6 +302,7 @@ VertexID TrapezoidMapP::AppendVertex(const Vertex &vertex)
   _prevVertices.Pushback(INVALID_INDEX);
   _vertexRegions.push_back(ROOT_NODE_ID);
   _lowNeighbors.emplace_back();
+  _positionNumber.emplace_back(positionNum);
 
   return id;
 }
@@ -813,7 +816,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       leftDownward         = leftSegment.downward;
       leftHighVertexID = leftSegment.highVertex, leftLowVertexID = leftSegment.lowVertex;
     }
-    if (Intersected(leftHighVertexID, leftLowVertexID, highVertexID, lowVertexID, &intersection) == 1)
+    if (leftLowVertexID != lowVertexID && leftHighVertexID != highVertexID &&
+        Intersected(highVertexID, lowVertexID, leftSegmentID, &intersection))
     {
       // split vertices
       VertexID leftNewVertexID = AppendVertex(intersection), rightNewVertexID = AppendVertex(intersection);
@@ -954,7 +958,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       rightDownward         = rightSegment.downward;
       rightHighVertexID = rightSegment.highVertex, rightLowVertexID = rightSegment.lowVertex;
     }
-    if (Intersected(rightHighVertexID, rightLowVertexID, highVertexID, lowVertexID, &intersection) == 1)
+    if (rightLowVertexID != lowVertexID && rightHighVertexID != highVertexID &&
+        Intersected(highVertexID, lowVertexID, rightSegmentID, &intersection))
     {
       // split vertices
       VertexID leftNewVertexID = AppendVertex(intersection), rightNewVertexID = AppendVertex(intersection);
@@ -1063,6 +1068,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         VertexNeighborInfo &leftNewLowNeis = _lowNeighbors[leftNewVertexID];
         leftNewLowNeis.right               = zeroRegionID;
 
+        // maintain end/prevs
         _endVertices[rightHighVertexID] = rightNewVertexID;
         _endVertices[leftNewVertexID]   = rightLowVertexID;
         _endVertices[highVertexID]      = leftNewVertexID;
@@ -1071,6 +1077,10 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         _prevVertices[rightNewVertexID] = rightHighVertexID;
         _prevVertices[lowVertexID]      = rightNewVertexID;
         _prevVertices[rightLowVertexID] = leftNewVertexID;
+
+        // maintain point numbers
+        _positionNumber[leftNewVertexID]  = _positionNumber[rightLowVertexID];
+        _positionNumber[rightNewVertexID] = _positionNumber[lowVertexID];
       }
       else if (!rightDownward && !newSegmentDownward)
       {
@@ -1195,6 +1205,12 @@ void TrapezoidMapP::AssignDepth()
   }
 }
 
+bool TrapezoidMapP::HigherVS(VertexID vertexID, SegmentID segmentID) const
+{
+  const Segment &segment = _segments[segmentID];
+  return Higher(vertexID, segment.highVertex, segment.lowVertex);
+}
+
 bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
   const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
@@ -1213,7 +1229,7 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
   // same x, y: latter vertex always on the right, is this OK?
   // todo: in paper, another random integer is assigned to determine this.
   assert(leftVertexID != rightVertexID);
-  return leftVertexID < rightVertexID;
+  return _positionNumber[leftVertexID] < _positionNumber[rightVertexID];
 }
 
 int TrapezoidMapP::Higher(const Vertex &leftVertex, const Vertex &rightVertex) const
@@ -1241,7 +1257,7 @@ bool TrapezoidMapP::Higher(VertexID refVertexID, VertexID highVertexID, VertexID
   if (cross != 0.)
     return cross > 0;
 
-  return refVertexID < std::min(highVertexID, lowVertexID);
+  return _positionNumber[refVertexID] < _positionNumber[lowVertexID];
 }
 
 int TrapezoidMapP::Higher(const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const
@@ -1295,4 +1311,43 @@ int TrapezoidMapP::Intersected(VertexID segment1_Start,
   intersection->y = s1.y + (t * vec1.y);
 
   return intersectionFlag;
+}
+
+bool TrapezoidMapP::Intersected(VertexID segmentStartID,
+                                VertexID segmentEndID,
+                                SegmentID anotherSegmentID,
+                                Vertex *const intersection,
+                                int *type) const
+{
+  assert(Valid(anotherSegmentID));
+  if (Infinite(anotherSegmentID))
+    return false;
+
+  const Segment &anotherSegment = _segments[anotherSegmentID];
+  VertexID highVertexID = anotherSegment.highVertex, lowVertexID = anotherSegment.lowVertex;
+
+  bool sleft = Higher(segmentStartID, highVertexID, lowVertexID),
+       eleft = Higher(segmentEndID, highVertexID, lowVertexID);
+  if (sleft ^ eleft && intersection)  // intersected
+  {
+    const Vertex &s1 = _vertices[segmentStartID], &e1 = _vertices[segmentEndID],
+                 &s2 = _vertices[highVertexID], &e2 = _vertices[lowVertexID];
+
+    Vec2 vec1 = e1 - s1, vec2 = e2 - s2, s2s1 = s1 - s2;
+    double denom = vec1 ^ vec2;  // todo: check
+    if (std::abs(denom) < config.tolerance)
+    {
+      if (vec1.NormSq() < config.tolerance)
+        *intersection = 0.5 * vec1 + s1;
+      else  // (vec2.NormSq() < config.tolerance)
+        *intersection = 0.5 * vec2 + s2;
+    }
+    else
+    {
+      double t        = vec2 ^ s2s1 / denom;
+      intersection->x = s1.x + (t * vec1.x);
+      intersection->y = s1.y + (t * vec1.y);
+    }
+  }  // todo: return type
+  return sleft ^ eleft;
 }

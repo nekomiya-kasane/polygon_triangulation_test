@@ -57,12 +57,13 @@ SEIDEL_PRIVATE:
   RegionID Query(VertexID vertexID);
   RegionID QueryFrom(NodeID regionID, VertexID vertexID);
 
-  VertexID AppendVertex(const Vertex &vertex);
+  VertexID AppendVertex(const Vertex &vertex, int positionNum = -1);
   SegmentID AppendSegment(bool downward);
 
   void AssignDepth();
 
   std::vector<SegmentID> _permutation;
+  std::vector<int> _positionNumber;
 
   // for merging
   RegionID _nextRegion = INVALID_INDEX, _tmpRegionToMerge = INVALID_INDEX;
@@ -156,6 +157,7 @@ SEIDEL_PRIVATE:
                   SegmentID segmentID);
 
   // geometric calculation
+  bool HigherVS(VertexID refVertexID, SegmentID rightVertexID) const;
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
   int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
   bool Higher /* Lefter */ (VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const;
@@ -164,7 +166,13 @@ SEIDEL_PRIVATE:
                   VertexID segment1_End,
                   VertexID segment2_Start,
                   VertexID segment2_End,
-                  Vertex *const intersection, int* type = nullptr) const;
+                  Vertex *const intersection,
+                  int *type = nullptr) const;
+  bool Intersected(VertexID segmentStartID,
+                   VertexID segmentEndID,
+                   SegmentID anotherSegmentID,
+                   Vertex *const intersection,
+                   int *type = nullptr) const;
   // bool PointOnSegment();  // todo: "T" type coincidence
 };
 
