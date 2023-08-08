@@ -3,7 +3,7 @@
 #include <algorithm>
 
 Triangles EarCutTriangulator::Triangulate(const std::vector<double> &data,
-                                          const std::vector<std::vector<unsigned int>> &holeIndices,
+                                          const std::vector<unsigned int> &holeIndices,
                                           short dim)
 {
   if (dim != 2 && dim != 3)
@@ -12,7 +12,7 @@ Triangles EarCutTriangulator::Triangulate(const std::vector<double> &data,
   }
 
   bool hasHoles         = !holeIndices.empty();
-  unsigned int outerLen = hasHoles ? holeIndices[0] * dim : data.size();
+  unsigned int outerLen = hasHoles ? (holeIndices[0] * dim) : data.size();
 
   auto outerNode = CreateLinkedList(data, 0, outerLen, dim, true);
   Triangles triangles;
@@ -141,9 +141,9 @@ void EarCutTriangulator::EarcutLinked(Node *ear,
     if (invSize ? IsEarHashed(ear, minX, minY, invSize) : IsEar(ear))
     {
       // cut off the triangle
-      triangles.push(prev->i / dim);
-      triangles.push(ear->i / dim);
-      triangles.push(next->i / dim);
+      triangles.push_back(prev->i / dim);
+      triangles.push_back(ear->i / dim);
+      triangles.push_back(next->i / dim);
 
       RemoveNode(ear);
 
@@ -277,9 +277,9 @@ Node *EarCutTriangulator::CureLocalIntersections(Node *start, Triangles &triangl
     if (!Equals(a, b) && Intersects(a, p, p->next, b) && LocallyInside(a, b) && LocallyInside(b, a))
     {
 
-      triangles.push(a->i / dim | 0);
-      triangles.push(p->i / dim | 0);
-      triangles.push(b->i / dim | 0);
+      triangles.push_back(a->i / dim | 0);
+      triangles.push_back(p->i / dim | 0);
+      triangles.push_back(b->i / dim | 0);
 
       // remove two nodes involved
       RemoveNode(p);
@@ -329,16 +329,16 @@ void EarCutTriangulator::SplitEarcut(Node *start,
 }
 
 // link every hole into the outer loop, producing a single-ring polygon without holes
-Node *ConnectHoles(const std::vector<double> &data,
-                   const std::vector<unsigned int> &holeIndices,
-                   Node *outerNode,
-                   short dim)
+Node *EarCutTriangulator::ConnectHoles(const std::vector<double> &data,
+                                       const std::vector<unsigned int> &holeIndices,
+                                       Node *outerNode,
+                                       short dim)
 {
   std::vector<Node *> queue;
   queue.reserve(holeIndices.size());
 
-  size_t i, len;
-  Node *start, *end, *list;
+  size_t i, len, start, end;
+  Node *list;
 
   for (i = 0, len = holeIndices.size(); i < len; i++)
   {
@@ -492,7 +492,7 @@ Node *EarCutTriangulator::SortLinked(Node *list)
       while (pSize > 0 || (qSize > 0 && q))
       {
 
-        if (pSize != 0 && (qSize == 0 || !q || p.z <= q.z))
+        if (pSize != 0 && (qSize == 0 || !q || p->z <= q->z))
         {
           e = p;
           p = p->nextZ;

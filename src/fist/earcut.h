@@ -17,10 +17,12 @@ struct Node
   bool steiner = false;
 };
 
+using Triangles = std::vector<unsigned int>;
+
 class EarCutTriangulator
 {
   Triangles Triangulate(const std::vector<double> &data,
-                        const std::vector<std::vector<unsigned int>> &holeIndices,
+                        const std::vector<unsigned int> &holeIndices,
                         short dim = 2);
   Node *FilterPoints(Node *start, Node *end = nullptr);
   Node *CureLocalIntersections(Node *start, Triangles &triangles, short dim);
@@ -70,5 +72,5 @@ class EarCutTriangulator
 
   short GetSign(double num);
   double EvalArea(Node *p, Node *q, Node *r);
-  double EvalSignedArea(const std::vector<double> &data, unsigned int start, unsigned int end, short dim)
+  double EvalSignedArea(const std::vector<double> &data, unsigned int start, unsigned int end, short dim);
 };
