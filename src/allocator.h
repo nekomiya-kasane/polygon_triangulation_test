@@ -75,6 +75,12 @@ public:
   inline size_type Size() const { return static_cast<size_type>(_next - _data); }
   inline size_type Capability() const { return static_cast<size_type>(_top - _data); }
 
+  inline T *Back() const
+  {
+    assert(Size() > 0);
+    return _next - 1;
+  }
+
   inline size_type Pushback(const T *begin, size_t size)
   {
     if (Capability() < Size() + size)

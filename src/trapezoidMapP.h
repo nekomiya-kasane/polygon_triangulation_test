@@ -28,7 +28,9 @@ public:
 
   struct Config
   {
-    double tolerance       = 1e-16;
+    double tolerance       = 1e-10;
+    bool removeZeroEdges   = true;
+    bool assumeSimple      = true;
     bool checkIntersection = false;
     bool useGivenSeed      = false;
     int seed               = 1;

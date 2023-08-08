@@ -60,3 +60,5 @@ target_link_libraries(
   seidel_triangulation_meter PRIVATE
   seidel_triangulator
 )
+
+find_package(CDT REQUIRED CONFIG)

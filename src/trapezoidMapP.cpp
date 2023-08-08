@@ -14,7 +14,11 @@
 void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 {
   unsigned int oldSize       = _vertices.Size(),
-               incrementSize = static_cast<unsigned int>(compactPoints ? points.size() : points.size() - 1);
+               incrementSize = static_cast<unsigned int>(compactPoints ? points.size() : points.size() - 1),
+               realIncrementalSize = 0;
+
+  if (incrementSize < 3)
+    return;
 
   _vertices.Reserve(_vertices.Size() + incrementSize);
   _segments.Reserve(_endVertices.Size() + incrementSize);
@@ -28,7 +32,18 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
   _segmentCount += points.size();  // original count
 
   // todo: memcpy costs too much time for large polygon
-  _vertices.Pushback(points.data(), incrementSize);
+  if (config.removeZeroEdges)
+  {
+    _vertices.Pushback(points.front());
+    for (unsigned int i = 1; i < points.size(); ++i)
+      if ((*_vertices.Back() - points[i]).Norm() <= config.tolerance)
+        continue;
+      else
+        _vertices.Pushback(points[i]);
+  }
+  else
+    _vertices.Pushback(points.data(), incrementSize);
+
   for (const auto &point : points)
     _positionNumber.push_back(_positionNumber.size());
 
