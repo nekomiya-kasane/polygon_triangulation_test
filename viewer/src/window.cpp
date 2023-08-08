@@ -326,14 +326,14 @@ int main()
   //                                   {{-7, -7}, {-7, 7}, {7, 7}, {7, -7}}, {{-8, -8}, {-8, 8}, {8, 8}, {8,
   //                                   -8}}};
 
-  //points = {{{2, 2}, {2, -2}, {0, -2}, {1, 0}, {-1, 0}, {0, -2}, {-2, -2}, {-2, 2}}};
+  // points = {{{2, 2}, {2, -2}, {0, -2}, {1, 0}, {-1, 0}, {0, -2}, {-2, -2}, {-2, 2}}};
 
   // Vec2Set points = {{183, 149}, {562, 966}, {819, 892}, {547, 138},
   //                   {524, 752}, {480, 54},  {327, 91},  {276, 168}};
 
   // points = PolygonGenerator::GenerateRandomPolygon(5000);
 
-  points = {{{-1, -0.5}, {-1, 1.5}, {1, -1}, {1, 1}}};
+  points = {{{1, -1}, {1, 1}, {-1, -0.5}, {-1, 1.5}}};
 
   tri.config.useGivenSeed = true;
   tri.config.seed         = 1;
@@ -341,7 +341,7 @@ int main()
   tri.config.incremental  = true;
   tri.config.maxSegment   = 1;
 #  endif
-  
+
   // visualization
   InitiateViewer();
 
