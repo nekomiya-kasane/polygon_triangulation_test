@@ -1421,26 +1421,33 @@ bool TrapezoidMapP::Intersected(VertexID segmentStartID,
 
   bool sleft = Higher(segmentStartID, highVertexID, lowVertexID),
        eleft = Higher(segmentEndID, highVertexID, lowVertexID);
-  if (sleft ^ eleft && intersection)  // intersected
+  if (sleft ^ eleft)  // intersected
   {
     const Vertex &s1 = _vertices[segmentStartID], &e1 = _vertices[segmentEndID],
                  &s2 = _vertices[highVertexID], &e2 = _vertices[lowVertexID];
 
     Vec2 vec1 = e1 - s1, vec2 = e2 - s2, s2s1 = s1 - s2;
-    double denom = vec1 ^ vec2;  // todo: check
-    if (std::abs(denom) < config.tolerance)
+    double denom = vec1 ^ vec2, t, s;        // todo: check
+    if (std::abs(denom) < config.tolerance)  // segment coincident
     {
-      if (vec1.NormSq() < config.tolerance)
-        *intersection = 0.5 * vec1 + s1;
-      else  // (vec2.NormSq() < config.tolerance)
-        *intersection = 0.5 * vec2 + s2;
+      assert(false);
+      if (intersection)
+        if (vec1.NormSq() < config.tolerance)
+          *intersection = 0.5 * vec1 + s1;
+        else  // (vec2.NormSq() < config.tolerance)
+          *intersection = 0.5 * vec2 + s2;
     }
     else
     {
-      double t        = vec2 ^ s2s1 / denom;
-      intersection->x = s1.x + (t * vec1.x);
-      intersection->y = s1.y + (t * vec1.y);
+      s = vec1 ^ s2s1 / denom;
+      t = vec2 ^ s2s1 / denom;
+      if (intersection)
+      {
+        intersection->x = s1.x + (t * vec1.x);
+        intersection->y = s1.y + (t * vec1.y);
+      }
     }
+    return s >= 0. && s <= 1. && t >= 0. && t <= 1.;
   }  // todo: return type
-  return sleft ^ eleft;
+  return false;
 }
