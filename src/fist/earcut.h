@@ -21,9 +21,12 @@ using Triangles = std::vector<unsigned int>;
 
 class EarCutTriangulator
 {
+public:
   Triangles Triangulate(const std::vector<double> &data,
                         const std::vector<unsigned int> &holeIndices,
                         short dim = 2);
+
+protected:
   Node *FilterPoints(Node *start, Node *end = nullptr);
   Node *CureLocalIntersections(Node *start, Triangles &triangles, short dim);
   Node *FindHoleBridge(Node *hole, Node *outerNode);

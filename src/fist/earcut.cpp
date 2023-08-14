@@ -23,7 +23,7 @@ Triangles EarCutTriangulator::Triangulate(const std::vector<double> &data,
   if (hasHoles)
     outerNode == ConnectHoles(data, holeIndices, outerNode, dim);
 
-  double minX, minY, maxX, maxY, x, y, invSize;
+  double minX = 0, minY = 0, maxX = 0, maxY = 0, x = 0, y = 0, invSize = 0;
 
   // if the shape is not too simple, we'll use z-order curve hash later; calculate polygon bbox
   if (data.size() > 80 * dim)
@@ -61,8 +61,8 @@ Node *EarCutTriangulator::CreateLinkedList(const std::vector<double> &data,
                                            short dim,
                                            bool clockwise)
 {
-  unsigned int i;
-  Node *last;
+  unsigned int i = 0;
+  Node *last = nullptr;
 
   if (clockwise == (EvalSignedArea(data, start, end, dim) > 0))
   {

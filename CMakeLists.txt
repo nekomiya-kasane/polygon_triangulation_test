@@ -43,9 +43,23 @@ set(FISTHeader
 	"src/fist/earcut.h"
 )
 
+set(FIST2Sources
+	"src/fist_2/triangulator.cpp"
+	"src/fist_2/vec2.cpp"
+)
+set(FIST2Header
+	"src/fist_2/vec2.h"
+	"src/fist_2/allocator.h"
+	"src/fist_2/triangulator.h"
+)
+
 add_library(fist_triangulator STATIC)
 target_sources(fist_triangulator PRIVATE ${FISTSources} PUBLIC ${FISTHeader})
 target_include_directories(fist_triangulator PUBLIC "./src/fist")
+
+add_library(fist_triangulator_2 STATIC)
+target_sources(fist_triangulator_2 PRIVATE ${FIST2Sources} PUBLIC ${FIST2Header})
+target_include_directories(fist_triangulator_2 PUBLIC "./src/fist_2")
 
 if (ENABLE_INTERNAL_TESTS)
 	target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_INTERNAL_TEST)

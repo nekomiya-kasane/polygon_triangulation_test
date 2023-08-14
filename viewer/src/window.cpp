@@ -286,7 +286,7 @@ int main()
         }
         if (first || states.generateRandom)
         {
-          tri.Reset();
+          tri      = ViewableTriangulator{};
           size_t i = 0;
           for (const auto &contour : points)
           {
