@@ -210,24 +210,106 @@ Node *FistTriangulator::FindBridge(Node *boundary, Node *hole) const
       continue;
     }
 
-    // point P is in the triangle
+    // find a point P in the triangle, we cannot add the original diagonal, but to update the
+    // nearestBdrEdgeNode
+    double absTan = std::abs(hole->y - curBdrNode->y) / (hole->x - curBdrNode->x);
+    if (LocallyInside(hole, curBdrNode)
+        /* outside the hole */
+        && (absTan < minTan
+            /* better tangent */
+            || (absTan == minTan &&
+                (curBdrNode->x > nearestBdrEdgeNode->x ||
+                 /* same tangent but nearer (x larger) */
+                 (EvalSignedArea(nearestBdrEdgeNode->prev, nearestBdrEdgeNode, curBdrNode->prev) < 0 &&
+                  EvalSignedArea(curBdrNode->next, nearestBdrEdgeNode, nearestBdrEdgeNode->next) < 0)
+                 /*                  +
+                                    /            _____
+                                   ↗            /
+                             maxX /            /
+                          (B) -> o------------o <- leftMost (C)
+                                /...........   \   Hole
+                               ↗........        \_____
+                              /....    + <- current.prev
+                             /.   -
+                 ---->------o <- nearestBdrEdgeNode (A)
+                         ._
+                       + <- current
+                        \
+                         \
+                          \
+                           + <- current->next
+                The sector (ear) of `current` is contained in the sector of `nearestBdrEdgeNode`
+                */
+                 ))))
+    {
+      nearestBdrEdgeNode = curBdrNode;
+      minTan             = absTan;
+    }
 
     curBdrNode = curBdrNode->next;
-  } while (curBdrNode != originalNearestBdrEdgeNode)
+  } while (curBdrNode != originalNearestBdrEdgeNode);
+
+  return nearestBdrEdgeNode;
 }
 
 void FistTriangulator::RemoveHoles()
 {
   std::sort(_holes.begin(), _holes.end(), [](Node *left, Node *right) -> bool { return left->x < right->x; });
 
-  for (const auto hole : _holes)
+  for (const auto leftMostNodeOfHole : _holes)
   {
     // try to find a bridge diagonal between the hole and the boundary
-    Node *boundaryNode = FindBridge(_boundary, hole);
+    Node *boundaryNode = FindBridge(_boundary, leftMostNodeOfHole);
+    if (!boundaryNode)
+      continue;
+
+    // merge the hole to the boundary by adding a bridge between `boundaryNode` and `leftMostNodeOfHole`
+    /*
+                +
+               /            ____
+              /            /
+             /____________/ <- returns this
+            ______________
+           /              \   Hole
+          /                \_____
+         /
+        /
+       o
+    */
+    Node *mergedBoundary = SplitPolygon(boundaryNode, leftMostNodeOfHole);
+
+    // filter collinear points around the cuts
   }
 }
 
-double FistTriangulator::EvalSignedArea(double *points, uint32_t size)
+Node *FistTriangulator::SplitPolygon(Node *A, Node *B)
+{
+  /*
+      \              /                   \             /
+       \            /                     \  A      B /
+        \ A      B /          -->          \_________/
+        /          \                        __________
+       /            \                      /          \
+      /              \                    /            \
+                                         /              \
+  */
+  Node *newA = InsertNode(A->id, A->x, A->y), *newB = InsertNode(B->id, B->x, B->y);
+
+  newA->next = A->next;
+  newA->prev = newB;
+  newB->next = newA;
+  newB->prev = B->prev;
+
+  A->next->prev = newA;
+  B->prev->next = newB;
+
+  A->next = B;
+  B->prev = A;
+
+  return newB;
+}
+
+double FistTriangulator::EvalSignedArea(double *points, uint32_t size) const
 {
   double area = 0.;
   for (uint32_t i = 0, j = size - 1 /* last */; i < size; j = i, ++i)
@@ -239,28 +321,32 @@ double FistTriangulator::EvalSignedArea(double *points, uint32_t size)
   return area;
 }
 
-double FistTriangulator::EvalSignedArea(const Node *const A, const Node *const B, const Node *const C)
+double FistTriangulator::EvalSignedArea(const Node *const A, const Node *const B, const Node *const C) const
 {
   return (B->y - A->y) * (C->x - B->x) - (B->x - A->x) * (C->y - B->y);
 }
 
-bool FistTriangulator::LocallyInside(const Node *const base, const Node *const point)
+bool FistTriangulator::LocallyInside(const Node *const base, const Node *const point) const
 {
   bool cw = EvalSignedArea(base->prev, base, base->next) < 0;
 
   /* true occasions:
     [area < 0]                  [area > 0]
-     base        base->next                    base->prev
-        +____>____+            .................+
-       /...........          point -> *......../
-      ↗............            ...............↙
-     /........* <- point       ............../
-    +..............            +-------<----*
-    base->prev             base->next      base
+     base        base->next                    base->next
+        +====>====+                             ++..........
+       /...........                Both > 0    //...........
+      ↗............                           ↗↗............ <- Area(base, base->next, point) < 0
+     /........* <- point                     //.............
+    +..............            +=======>====*- - - - - - - -
+    base->prev             base->prev....../.base...........
+           ↑                   ............................. <- Both < 0
+          Both > 0             ........../..................
+                                  ↑
+                                  Area(base, point, base->prev) < 0
   */
   if (cw)
     return EvalSignedArea(base, point, base->next) >= 0 && EvalSignedArea(base, base->prev, point) >= 0;
-  return EvalSignedArea(base, point, base->prev) < 0 || EvalSignedArea(base, base->next, point);
+  return EvalSignedArea(base, point, base->prev) < 0 || EvalSignedArea(base, base->next, point) < 0;
 }
 
 bool FistTriangulator::MiddleInside(const Node *const A, const Node *const B) const
