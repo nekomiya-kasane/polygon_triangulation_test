@@ -35,20 +35,24 @@ public:
     return res;
   }
 
-  inline void remove(T *ptr) { _recycled.push_back(ptr - _data); }
+  inline void remove(T *ptr) { _recycled.push_back(static_cast<unsigned int>(ptr - _data)); }
 
-  inline unsigned int size() const { return _next - _data - _recycled.size(); }
+  inline unsigned int size() const { return static_cast<unsigned int>(_next - _data - _recycled.size()); }
 
-  inline unsigned int capacity() const { return _top - _data; }
+  inline unsigned int capacity() const { return static_cast<unsigned int>(_top - _data); }
 
   inline void reserve(unsigned int n)
   {
     if (capacity() > n)
       return;
-    auto oldNext = _next - _data;
-    _data        = (T *)realloc(_data, sizeof(T) * n);
-    _next        = oldNext + _data;
-    _top         = _data + n;
+    auto oldNext     = _next - _data;
+    auto reallocated = (T *)realloc(_data, sizeof(T) * n);
+    if (_data && reallocated)
+    {
+      _data = reallocated;
+      _next = oldNext + _data;
+      _top  = _data + n;
+    }
   }
 
   inline unsigned int getID(T *ptr) const { return ptr - _data; }

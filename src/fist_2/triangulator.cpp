@@ -137,6 +137,15 @@ Node *FistTriangulator::CreateLinkedList(double *points,
     for (uint32_t i = size - 1; i >= 0; --i)
       lastNode = InsertNode(i, points[config.dim * i], points[config.dim * i + 1], lastNode);
   }
+
+  // fix tail
+  if (lastNode && lastNode->x == lastNode->next->x && lastNode->y == lastNode->next->y)
+  {
+    lastNode = lastNode->next;
+    RemoveNode(lastNode->prev);
+  }
+
+  return lastNode;
 }
 
 // David Eberly's Algorithm
@@ -339,9 +348,11 @@ Node *FistTriangulator::RemoveHoles()
     Node *mergedBoundary = SplitPolygon(boundaryNode, leftMostNodeOfHole);
 
     // filter collinear points around the cuts
-    return RemoveRebundantVertices(mergedBoundary, mergedBoundary->next),
-           RemoveRebundantVertices(boundaryNode, boundaryNode);
+    _boundary = (RemoveRebundantVertices(mergedBoundary, mergedBoundary->next),
+                 RemoveRebundantVertices(boundaryNode, boundaryNode));
   }
+
+  return _boundary;
 }
 
 Node *FistTriangulator::RemoveRebundantVertices(Node *start, Node *end)
@@ -395,7 +406,7 @@ Node *FistTriangulator::CureLocalIntersections(Node *start)
                    *
                    next
   */
-  Node *curNode;
+  Node *curNode = start;
   do
   {
     Node *prev = curNode->prev, *next = curNode->next, *nextNext = next->next;
@@ -861,6 +872,8 @@ Node *FistTriangulator::InsertNode(uint32_t id, double x, double y, Node *last)
   node->prev       = last;
   node->next->prev = node;
   last->next       = node;
+
+  return node;
 }
 
 void FistTriangulator::RemoveNode(Node *node)
