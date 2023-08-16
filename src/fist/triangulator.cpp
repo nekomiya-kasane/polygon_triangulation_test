@@ -43,7 +43,7 @@ Node::Node(uint32_t id, double x, double y)
 
 FistTriangulator::FistTriangulator(uint32_t pointCount, short dimension)
 {
-  _alloc     = RecyclableAllocator<Node, false>(pointCount);
+  _alloc     = std::move(RecyclableAllocator<Node, false>(pointCount));
   config.dim = dimension;
 }
 
@@ -134,7 +134,7 @@ Node *FistTriangulator::CreateLinkedList(double *points,
   }
   else
   {
-    for (uint32_t i = size - 1; i >= 0; --i)
+    for (uint32_t i = size - 1; i != -1; --i)
       lastNode = InsertNode(i, points[config.dim * i], points[config.dim * i + 1], lastNode);
   }
 
@@ -349,7 +349,7 @@ Node *FistTriangulator::RemoveHoles()
 
     // filter collinear points around the cuts
     _boundary = (RemoveRebundantVertices(mergedBoundary, mergedBoundary->next),
-                 RemoveRebundantVertices(boundaryNode, boundaryNode));
+                 RemoveRebundantVertices(boundaryNode, boundaryNode->next));
   }
 
   return _boundary;

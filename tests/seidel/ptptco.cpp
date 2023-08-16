@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "triangulator.h"
+#include "seidel/triangulator.h"
 
 #include "common.h"
 

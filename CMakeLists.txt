@@ -30,36 +30,24 @@ endif ()
 
 add_library(seidel_triangulator STATIC)
 target_sources(seidel_triangulator PRIVATE ${SeidelSources} PUBLIC ${SeidelHeaders})
-target_include_directories(seidel_triangulator PUBLIC "./src/seidel")
+target_include_directories(seidel_triangulator PUBLIC "./src" PRIVATE "./src/seidel")
 target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_USE_SIGNED_INDEX)
 
 set(FISTSources
-	"src/fist/earcut.cpp"
+	"src/fist/triangulator.cpp"
 	"src/fist/vec2.cpp"
 )
 set(FISTHeader
 	"src/fist/vec2.h"
 	"src/fist/allocator.h"
-	"src/fist/earcut.h"
-)
+	"src/fist/triangulator.h"
 
-set(FIST2Sources
-	"src/fist_2/triangulator.cpp"
-	"src/fist_2/vec2.cpp"
-)
-set(FIST2Header
-	"src/fist_2/vec2.h"
-	"src/fist_2/allocator.h"
-	"src/fist_2/triangulator.h"
+	"src/fist/views.natvis"
 )
 
 add_library(fist_triangulator STATIC)
 target_sources(fist_triangulator PRIVATE ${FISTSources} PUBLIC ${FISTHeader})
-target_include_directories(fist_triangulator PUBLIC "./src/fist")
-
-add_library(fist_triangulator_2 STATIC)
-target_sources(fist_triangulator_2 PRIVATE ${FIST2Sources} PUBLIC ${FIST2Header})
-target_include_directories(fist_triangulator_2 PUBLIC "./src/fist_2")
+target_include_directories(fist_triangulator PUBLIC "./src" PRIVATE "./src/fist")
 
 if (ENABLE_INTERNAL_TESTS)
 	target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_INTERNAL_TEST)

@@ -1,5 +1,5 @@
 #include "polygon_generator.h"
-#include "triangulator.h"
+#include "seidel/triangulator.h"
 
 #include <chrono>
 #include <fstream>

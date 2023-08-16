@@ -8,15 +8,14 @@
 #include "raygui.h"  // Required for GUI controls
 #pragma warning(pop)
 
-#include "earcut.h"
+#include "fist/triangulator.h"
 #include "polygon_generator.h"
 
 #include <iostream>
 #include <string>
 
-EarCutTriangulator tri;
-Triangles result;
 std::vector<double> data = {120, 20, 20, 20, 520, 20, 620, 620, 20, 720};
+FistTriangulator tri(data.size() / 2);
 enum State
 {
   NONE,
@@ -44,6 +43,7 @@ void DrawTriangles(const Vector2 &A, const Vector2 &B, const Vector2 &C, unsigne
   float midX = (A.x + B.x + C.x) / 3, midY = (A.y + B.y + C.y) / 3;
 
   DrawTriangle(A, B, C, Fade(GREEN, 0.3f));
+  DrawTriangle(A, C, B, Fade(GREEN, 0.3f));
   DrawTriangleLines(A, B, C, GREEN);
   DrawTextEx(states.font, ("T" + std::to_string(index)).c_str(), Vector2{midX, midY}, 20, 0, GREEN);
 }
@@ -55,7 +55,8 @@ int main()
   const int screenHeight   = 1080;
   const int infoPanelHight = 200;
 
-  result = tri.Triangulate(data, {});
+  tri.SetBoundary(data.data(), data.size() / 2);
+  tri.Triangulate();
 
   InitWindow(screenWidth, screenHeight + infoPanelHight, "Seidel Algorithm Visualizer");
   SetWindowMinSize(screenWidth, screenHeight + infoPanelHight);
@@ -76,8 +77,7 @@ int main()
       {
         state = ADDING_POINTS;
         data.clear();
-        result.clear();
-        tri = EarCutTriangulator();
+        tri = FistTriangulator(data.size() / 2);
       }
       Vector2 pos = GetMousePosition();
       data.push_back(pos.x);
@@ -87,8 +87,9 @@ int main()
     {
       if (state == ADDING_POINTS)
       {
-        state  = NONE;
-        result = tri.Triangulate(data, {});
+        state = NONE;
+        tri.SetBoundary(data.data(), data.size() / 2);
+        tri.Triangulate();
       }
     }
 
@@ -116,14 +117,15 @@ int main()
         {
           auto points = PolygonGenerator::GenerateRandomPolygon(states.generateRandomSize);
 
-          tri = EarCutTriangulator();
+          tri = FistTriangulator(data.size() / 2);
           data.clear();
           for (const auto &point : points[0])
           {
             data.push_back(point.x);
             data.push_back(point.y);
           }
-          result = tri.Triangulate(data, {});
+          tri.SetBoundary(data.data(), data.size() / 2);
+          tri.Triangulate();
 
           states.generateRandom = false;
           state == NONE;
@@ -134,6 +136,7 @@ int main()
         {
           DrawPoint(data[2 * i], data[2 * i + 1], i);
         }
+        const auto &result = tri.triangles;
         for (size_t i = 0; i < result.size() / 3; ++i)
         {
           DrawTriangles({(float)data[2 * result[3 * i]], (float)data[2 * result[3 * i] + 1]},

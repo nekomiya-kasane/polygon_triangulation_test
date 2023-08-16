@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "triangulator.h"
+#include "seidel/triangulator.h"
 
 constexpr AnyID Nil = INVALID_INDEX, Inf = INFINITY_INDEX;
 
