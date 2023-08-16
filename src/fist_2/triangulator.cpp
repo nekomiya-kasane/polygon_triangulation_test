@@ -14,6 +14,7 @@ constexpr const char *const nodeFiller()
     result[i] = '\0';
 
 #define _FILL_DATA_(TYPE, MEMBER, VAL) *(TYPE *)&result[offsetof(Node, MEMBER)] = VAL;
+  _FILL_DATA_(int32_t, zid, 0);
   //_FILL_DATA_(Node *, prev, nullptr);
   //_FILL_DATA_(Node *, next, nullptr);
   _FILL_DATA_(Node *, prevZ, nullptr);
@@ -78,7 +79,33 @@ void FistTriangulator::AppendHole(double *points, uint32_t size, Chiraty holeCha
 
 void FistTriangulator::Triangulate()
 {
+  if (!_boundary)
+    return;
+
   RemoveHoles();
+
+  // eval bounding box, for z curve hashing
+  if (config.useZCurveAccellaration > 0)
+  {
+    _minX = _maxX = _boundary->x;
+    _minY = _maxY = _boundary->y;
+
+    Node *curNode = _boundary->next;
+    while (curNode != _boundary)
+    {
+      _minX = std::min(_minX, _boundary->x);
+      _maxX = std::max(_maxX, _boundary->x);
+      _minY = std::min(_minY, _boundary->y);
+      _maxY = std::max(_maxY, _boundary->y);
+
+      curNode = curNode->next;
+    }
+
+    _invSize = std::max(_maxX - _minX, _maxY - _minY);
+    _invSize = _invSize < config.tolerance /* 0 or tol ? */ ? 32767. / _invSize : 0.;
+  }
+
+  EarCut(_boundary);
 }
 
 Node *FistTriangulator::CreateLinkedList(double *points,
@@ -93,6 +120,8 @@ Node *FistTriangulator::CreateLinkedList(double *points,
 
   if (expectedChiraty != UNKNOWN && targetChiraty == UNKNOWN)
     targetChiraty = EvalSignedArea(points, size) > 0 ? CLOCKWISE : COUNTERCLOCKWISE;
+
+  _alloc.reserve(_alloc.size() + size);
 
   if (expectedChiraty == UNKNOWN || targetChiraty == expectedChiraty)
   {
@@ -252,7 +281,7 @@ Node *FistTriangulator::FindBridge(Node *boundary, Node *hole) const
   return nearestBdrEdgeNode;
 }
 
-void FistTriangulator::RemoveHoles()
+Node *FistTriangulator::RemoveHoles()
 {
   std::sort(_holes.begin(), _holes.end(), [](Node *left, Node *right) -> bool { return left->x < right->x; });
 
@@ -279,7 +308,46 @@ void FistTriangulator::RemoveHoles()
     Node *mergedBoundary = SplitPolygon(boundaryNode, leftMostNodeOfHole);
 
     // filter collinear points around the cuts
+    return RemoveRebundantVertices(mergedBoundary, mergedBoundary->next),
+           RemoveRebundantVertices(boundaryNode, boundaryNode);
   }
+}
+
+Node *FistTriangulator::RemoveRebundantVertices(Node *start, Node *end)
+{
+  // remove coincident or collinear points
+  if (!end)
+    end = start;  // scan the hole border
+
+  Node *curNode     = start;
+  bool furtherCheck = false;
+  /* if end->next or further vertices are coincident with end, then do further check */
+  do
+  {
+    furtherCheck = false;
+    if (!curNode->steiner
+        /* steiner point, which is provided by the user, should not be removed */
+        && (curNode->x == curNode->next->x && curNode->y == curNode->next->y
+            /* coincident */
+            || EvalSignedArea(curNode->prev, curNode, curNode->next))
+        /* collinear */
+        )  // todo: tolerance?
+    {
+      RemoveNode(curNode);  // caution: don't overwrite curNode as its already removed.
+      curNode = end = curNode->prev;
+
+      if (curNode == curNode->next)
+        break;
+      furtherCheck = true;
+    }
+    else
+    {
+      curNode = curNode->next;
+    }
+
+  } while (furtherCheck || curNode != end);
+
+  return end;
 }
 
 Node *FistTriangulator::SplitPolygon(Node *A, Node *B)
@@ -394,6 +462,123 @@ bool FistTriangulator::PointInTriangle(double Ax,
   return res;
 }
 
+int32_t FistTriangulator::EvalZOrder(double x, double y) const
+{
+  // Ref: https://en.wikipedia.org/wiki/Z-order_curve
+  int32_t ix = static_cast<int32_t>((x - _minX) * _invSize);
+  int32_t iy = static_cast<int32_t>((y - _minY) * _invSize);
+
+  ix = (ix | (ix << 8)) & 0x00FF00FF;
+  ix = (ix | (ix << 4)) & 0x0F0F0F0F;
+  ix = (ix | (ix << 2)) & 0x33333333;
+  ix = (ix | (ix << 1)) & 0x55555555;
+
+  iy = (iy | (iy << 8)) & 0x00FF00FF;
+  iy = (iy | (iy << 4)) & 0x0F0F0F0F;
+  iy = (iy | (iy << 2)) & 0x33333333;
+  iy = (iy | (iy << 1)) & 0x55555555;
+
+  return ix | (iy << 1);
+}
+
+void FistTriangulator::AssignZOrder(Node *borderNode)
+{
+  if (!borderNode)
+    return;
+
+  Node *curNode = borderNode;
+  // init
+  do
+  {
+    if (!curNode->zid)
+      curNode->zid = EvalZOrder(curNode->x, curNode->y);
+
+    curNode->prevZ = curNode->prev;
+    curNode->nextZ = curNode->next;
+
+    curNode = curNode->next;
+  } while (curNode != borderNode);
+
+  // cut tail
+  curNode->prevZ = curNode->prevZ->nextZ = nullptr;
+
+  // sort
+  // Simon Tatham's linked list merge sort algorithm
+  // Ref: http://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
+  Node *P, *Q, *E, *tail;
+  int i, numMerges, PSize, QSize;
+  int inSize = 1;
+  while (true)
+  {
+    P         = curNode;
+    curNode   = nullptr;
+    tail      = nullptr;
+    numMerges = 0;
+
+    while (P)
+    {
+      numMerges++;
+      Q     = P;
+      PSize = 0;
+      for (i = 0; i < inSize; i++)
+      {
+        PSize++;
+        Q = Q->nextZ;
+        if (!Q)
+          break;
+      }
+
+      QSize = inSize;
+
+      while (PSize > 0 || (QSize > 0 && Q))
+      {
+
+        if (PSize == 0)
+        {
+          E = Q;
+          Q = Q->nextZ;
+          QSize--;
+        }
+        else if (QSize == 0 || !Q)
+        {
+          E = P;
+          P = P->nextZ;
+          PSize--;
+        }
+        else if (P->zid <= Q->zid)
+        {
+          E = P;
+          P = P->nextZ;
+          PSize--;
+        }
+        else
+        {
+          E = Q;
+          Q = Q->nextZ;
+          QSize--;
+        }
+
+        if (tail)
+          tail->nextZ = E;
+        else
+          curNode = E;
+
+        E->prevZ = tail;
+        tail     = E;
+      }
+
+      P = Q;
+    }
+
+    tail->nextZ = nullptr;
+
+    if (numMerges <= 1)
+      break;
+
+    inSize *= 2;
+  }
+}
+
 Node *FistTriangulator::InsertNode(uint32_t id, double x, double y, Node *last)
 {
   // original: last --> last.next
@@ -425,4 +610,6 @@ void FistTriangulator::RemoveNode(Node *node)
     node->prevZ->nextZ = node->nextZ;
   if (node->nextZ)
     node->nextZ->prevZ = node->prevZ;
+
+  _alloc.remove(node);
 }

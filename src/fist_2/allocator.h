@@ -18,6 +18,7 @@ public:
 
     _recycled.reserve(n / 3);
   }
+  inline ~RecyclableAllocator() { free(_data); }
 
   template <class... Args>
   inline T *alloc(Args... args)
@@ -39,6 +40,16 @@ public:
   inline unsigned int size() const { return _next - _data - _recycled.size(); }
 
   inline unsigned int capacity() const { return _top - _data; }
+
+  inline void reserve(unsigned int n)
+  {
+    if (capacity() > n)
+      return;
+    auto oldNext = _next - _data;
+    _data        = (T *)realloc(_data, sizeof(T) * n);
+    _next        = oldNext + _data;
+    _top         = _data + n;
+  }
 
   inline unsigned int getID(T *ptr) const { return _ptr - _data; }
 

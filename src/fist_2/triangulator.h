@@ -8,6 +8,7 @@ struct Node
   Node(uint32_t id, double x, double y);
 
   uint32_t id;
+  int32_t zid;
   double x, y;
   Node *prev, *next;
   Node *prevZ, *nextZ;
@@ -25,7 +26,7 @@ public:
     COUNTERCLOCKWISE,
   };
 
-  uint32_t INVALID_UINT = -1;
+  static const uint32_t INVALID_UINT = -1;
   struct
   {
     short dim                       = 2;
@@ -50,8 +51,8 @@ protected:
                          Chiraty targetChiraty   = UNKNOWN);
   Node *FindBridge(Node *boundary, Node *hole) const;
   Node *SplitPolygon(Node *A, Node *B);
-  void RemoveHoles();
-  void RemoveDuplicateVertices(Node *start, Node *end);
+  Node *RemoveHoles();
+  Node *RemoveRebundantVertices(Node *start, Node *end = nullptr);
 
   double EvalSignedArea(double *points, uint32_t size) const; /* positive if CCW */
   double EvalSignedArea(const Node *const A,
@@ -63,12 +64,16 @@ protected:
   bool PointInTriangle(double Ax, double Ay, double Bx, double By, double Cx, double Cy, double Px, double Py)
       const;
 
+  int32_t EvalZOrder(double x, double y) const;
+  void AssignZOrder(Node *borderNode);
+
 protected:
   // insert node just after [last]
   Node *InsertNode(uint32_t id, double x, double y, Node *last = nullptr);
   void RemoveNode(Node *node);
 
   Node *_boundary = nullptr;
+  double _minX, _maxX, _minY, _maxY, _invSize;  // bounding box, for z-curve acceleration
 
   std::vector<Node *> _holes;
   RecyclableAllocator<Node, false> _alloc;
