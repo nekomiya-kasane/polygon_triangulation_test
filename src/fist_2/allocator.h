@@ -25,12 +25,12 @@ public:
   {
     if (_recycled.empty())
     {
-      T *res = new (_next) T(args);
+      T *res = new (_next) T(args...);
       _next++;
       return res;
     }
     unsigned int loc = _recycled.back();
-    T *res           = new (_data + loc) T(args);
+    T *res           = new (_data + loc) T(args...);
     _recycled.pop_back();
     return res;
   }
@@ -51,7 +51,7 @@ public:
     _top         = _data + n;
   }
 
-  inline unsigned int getID(T *ptr) const { return _ptr - _data; }
+  inline unsigned int getID(T *ptr) const { return ptr - _data; }
 
   inline void clear()
   {
@@ -61,5 +61,5 @@ public:
 
   std::vector<unsigned int> _recycled;
 
-  T *_data, _next, _top;
+  T *_data, *_next, *_top;
 };

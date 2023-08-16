@@ -75,8 +75,8 @@ protected:
   // static bool PointOnSegment(Node *L1, Node *L2, Node *point);
   static bool Intersected(const Node *L11, const Node *L12, const Node *L21, const Node *L22);
   static bool IntersectedWithPolygon(const Node *A, const Node *B, const Node *polygon);
-  static bool ValidEar(const Node *node);
-  static bool ValidHashedEar(const Node *node);
+  bool ValidEar(const Node *node) const;
+  bool ValidHashedEar(const Node *node) const;
 
   // z curve acceleration
   int32_t EvalZOrder(double x, double y) const;

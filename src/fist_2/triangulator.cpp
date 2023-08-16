@@ -1,5 +1,6 @@
 ﻿#include "triangulator.h"
 
+#include <functional>
 #include <limits>
 
 //=======================================================
@@ -456,11 +457,12 @@ void FistTriangulator::Earcut(Node *start, int mode /* = 0 */)
 {
   if (!start)
     return;
-  if (mode == 0 && config.useZCurveAccellaration)
+  if (mode == 0 && config.useZCurveAccellaration > 0)
     AssignZOrder(start);
 
-  auto IsValidEar =
-      config.useZCurveAccellaration ? &FistTriangulator::ValidHashedEar : &FistTriangulator::ValidEar;
+  auto IsValidEar = std::bind(
+      config.useZCurveAccellaration > 0 ? &FistTriangulator::ValidHashedEar : &FistTriangulator::ValidEar,
+      this, std::placeholders::_1);
 
   Node *curNode = start, *prev = nullptr, *next = nullptr;
 
@@ -657,6 +659,70 @@ bool FistTriangulator::IntersectedWithPolygon(const Node *A, const Node *B, cons
   } while (curNode != polygon);
 
   return false;
+}
+
+bool FistTriangulator::ValidEar(const Node *node) const
+{
+  const Node *prev = node->prev, *next = node->next;
+
+  if (EvalSignedArea(prev, node, next) >= 0) /* reflex */
+    return false;
+
+  // now make sure we don't have other points inside the potential ear
+  const Node *curNode = next->next;
+  while (curNode != node->prev)
+  {
+    if (PointInTriangle(prev->x, prev->y, node->x, node->y, next->x, next->y, curNode->x, curNode->y) &&
+        EvalSignedArea(curNode->prev, curNode, curNode->next) >= 0)
+      return false;
+    curNode = curNode->next;
+  }
+
+  return true;
+}
+
+bool FistTriangulator::ValidHashedEar(const Node *node) const
+{
+  const Node *const prev = node->prev, *const next = node->next;
+
+  if (EvalSignedArea(prev, node, next) >= 0) /* reflex */
+    return false;
+
+  // triangle bbox; min & max are calculated like this for speed
+  const double minTX = std::min(prev->x, std::min(node->x, next->x));
+  const double minTY = std::min(prev->y, std::min(node->y, next->y));
+  const double maxTX = std::max(prev->x, std::max(node->x, next->x));
+  const double maxTY = std::max(prev->y, std::max(node->y, next->y));
+
+  // z-order range for the current triangle bbox;
+  const int32_t minZ = EvalZOrder(minTX, minTY);
+  const int32_t maxZ = EvalZOrder(maxTX, maxTY);
+
+  // first look for points inside the triangle in increasing z-order
+  const Node *curZNode = node->nextZ;
+
+  while (curZNode && curZNode->zid <= maxZ)
+  {
+    if (curZNode != node->prev && curZNode != node->next &&
+        PointInTriangle(prev->x, prev->y, node->x, node->y, next->x, next->y, curZNode->x, curZNode->y) &&
+        EvalSignedArea(curZNode->prev, curZNode, curZNode->next) >= 0)
+      return false;
+    curZNode = curZNode->nextZ;
+  }
+
+  // then look for points in decreasing z-order
+  curZNode = node->prevZ;
+
+  while (curZNode && curZNode->zid >= minZ)
+  {
+    if (curZNode != node->prev && curZNode != node->next &&
+        PointInTriangle(prev->x, prev->y, node->x, node->y, next->x, next->y, curZNode->x, curZNode->y) &&
+        EvalSignedArea(curZNode->prev, curZNode, curZNode->next) >= 0)
+      return false;
+    curZNode = curZNode->prevZ;
+  }
+
+  return true;
 }
 
 int32_t FistTriangulator::EvalZOrder(double x, double y) const
