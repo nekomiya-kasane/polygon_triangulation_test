@@ -127,15 +127,16 @@ Node *FistTriangulator::CreateLinkedList(double *points,
 
   _alloc.reserve(_alloc.size() + size + 3);
 
+  uint32_t baseId = _alloc.size();
   if (expectedChiraty == UNKNOWN || targetChiraty == expectedChiraty)
   {
     for (uint32_t i = 0; i < size; ++i)
-      lastNode = InsertNode(i, points[config.dim * i], points[config.dim * i + 1], lastNode);
+      lastNode = InsertNode(baseId + i, points[config.dim * i], points[config.dim * i + 1], lastNode);
   }
   else
   {
     for (uint32_t i = size - 1; i != -1; --i)
-      lastNode = InsertNode(i, points[config.dim * i], points[config.dim * i + 1], lastNode);
+      lastNode = InsertNode(baseId + i, points[config.dim * i], points[config.dim * i + 1], lastNode);
   }
 
   // fix tail
@@ -153,7 +154,7 @@ Node *FistTriangulator::CreateLinkedList(double *points,
 // todo: maybe searching through the whole polygon is not necessary. Use a geometric hashing technique
 Node *FistTriangulator::FindBridge(Node *boundary, Node *hole) const
 {
-  Node *curBdrNode = _boundary, *nearestBdrEdgeNode = nullptr;
+  Node *curBdrNode = boundary, *nearestBdrEdgeNode = nullptr;
   const Node *leftMost = hole;
 
   /*        + cur
@@ -172,7 +173,7 @@ Node *FistTriangulator::FindBridge(Node *boundary, Node *hole) const
   do
   {
     /* not going down or the horizontal line and the edge are not intersected */
-    if (leftMost->y > curBdrNode->y || leftMost->y < leftMost->next->y ||
+    if (leftMost->y > curBdrNode->y || leftMost->y < curBdrNode->next->y ||
         curBdrNode->y == curBdrNode->next->y)
     {
       curBdrNode = curBdrNode->next;
@@ -298,11 +299,11 @@ Node *FistTriangulator::SplitPolygon(Node *A, Node *B)
 {
   /*
       \              /                   \             /
-       \            /                     \  A      B /
+       ↖            ↙                     ↖ newA newB /
         \ A      B /          -->          \_________/
         /          \                        __________
-       /            \                      /          \
-      /              \                    /            \
+       /            \                      / A      B \
+      /              \                    ↗            \
                                          /              \
   */
   Node *newA = InsertNode(A->id, A->x, A->y), *newB = InsertNode(B->id, B->x, B->y);
@@ -312,8 +313,8 @@ Node *FistTriangulator::SplitPolygon(Node *A, Node *B)
   newB->next = newA;
   newB->prev = B->prev;
 
-  A->next->prev = newA;
-  B->prev->next = newB;
+  newA->next->prev = newA;
+  newB->prev->next = newB;
 
   A->next = B;
   B->prev = A;
@@ -369,9 +370,9 @@ Node *FistTriangulator::RemoveRebundantVertices(Node *start, Node *end)
     furtherCheck = false;
     if (!curNode->steiner
         /* steiner point, which is provided by the user, should not be removed */
-        && (curNode->x == curNode->next->x && curNode->y == curNode->next->y
+        && ((curNode->x == curNode->next->x && curNode->y == curNode->next->y)
             /* coincident */
-            || EvalSignedArea(curNode->prev, curNode, curNode->next))
+            || (EvalSignedArea(curNode->prev, curNode, curNode->next) == 0.))
         /* collinear */
         )  // todo: tolerance?
     {

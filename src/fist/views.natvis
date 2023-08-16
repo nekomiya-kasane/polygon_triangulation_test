@@ -16,6 +16,17 @@
     <DisplayString>({x}, {y})</DisplayString>
   </Type>
   <Type Name="Node">
-    <DisplayString>({id}, {zid}, [{x}, {y}], [[{prev->id}, {prev->zid}], [{next->id}, {next->zid]])</DisplayString>
+    <DisplayString>({id}, {zid}, [{prev->id}, {next->id}], [{x}, {y}])</DisplayString>
+  </Type>
+  <Type Name="RecyclableAllocator&lt;*,*&gt;">
+    <DisplayString>Size: {_next - _data}, Capacity: {_top - _data}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_next - _data</Item>
+      <Item Name="[capacity]">_top - _data</Item>
+      <ArrayItems>
+        <Size>_next - _data</Size>
+        <ValuePointer>_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
   </Type>
 </AutoVisualizer>

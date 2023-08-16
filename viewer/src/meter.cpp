@@ -1,5 +1,6 @@
+#include "fist/triangulator.h"
 #include "polygon_generator.h"
-#include "seidel/triangulator.h"
+// #include "seidel/triangulator.h"
 
 #include <chrono>
 #include <fstream>
@@ -38,12 +39,17 @@ int main()
       start = timer.now();
       try
       {
-        Triangulator tri;
-        tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING;
-        tri.AddPolygon(points[0], true);
-        tri.config.useGivenSeed = true;
-        tri.Build();
+        // Triangulator tri;
+        // tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING;
+        // tri.AddPolygon(points[0], true);
+        // tri.config.useGivenSeed = true;
+        // tri.Build();
+        // tri.Triangulate();
+
+        FistTriangulator tri(i);
+        tri.SetBoundary((double *)points[0].data(), i);
         tri.Triangulate();
+
         interval = (timer.now() - start).count() / 1e9;
       }
       catch (...)

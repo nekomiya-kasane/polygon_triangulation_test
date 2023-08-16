@@ -73,4 +73,5 @@ add_executable(seidel_triangulation_meter ${MeterSources})
 target_link_libraries(
   seidel_triangulation_meter PRIVATE
   seidel_triangulator
+  fist_triangulator
 )

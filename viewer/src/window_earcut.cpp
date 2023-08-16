@@ -16,6 +16,8 @@
 
 std::vector<double> data = {120, 20, 20, 20, 520, 20, 620, 620, 20, 720};
 FistTriangulator tri(data.size() / 2);
+std::vector<std::pair<size_t, size_t>> components;
+
 enum State
 {
   NONE,
@@ -71,25 +73,46 @@ int main()
   while (!WindowShouldClose())  // Escape or exit button clicked
   {
     // move canvas
+    if (IsKeyReleased(KEY_Q))
+    {
+      data.clear();
+      tri.triangles.clear();
+    }
+    else if (IsKeyReleased(KEY_ENTER))
+    {
+      tri = FistTriangulator(data.size() / 2);
+      for (size_t i = 0; i < components.size(); ++i)
+      {
+        if (i == 0)
+        {
+          tri.SetBoundary(data.data(), components[i].second);
+        }
+        else
+        {
+          tri.AppendHole(data.data() + 2 * components[i].first, components[i].second);
+        }
+      }
+
+      tri.Triangulate();
+    }
+
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
     {
       if (state == NONE)
       {
         state = ADDING_POINTS;
-        data.clear();
-        tri = FistTriangulator(data.size() / 2);
+        components.push_back({data.size() / 2, 0});
       }
       Vector2 pos = GetMousePosition();
       data.push_back(pos.x);
       data.push_back(pos.y);
+      components.back().second++;
     }
     if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
     {
       if (state == ADDING_POINTS)
       {
         state = NONE;
-        tri.SetBoundary(data.data(), data.size() / 2);
-        tri.Triangulate();
       }
     }
 
