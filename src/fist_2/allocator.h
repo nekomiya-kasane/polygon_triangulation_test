@@ -53,6 +53,12 @@ public:
 
   inline unsigned int getID(T *ptr) const { return _ptr - _data; }
 
+  inline void clear()
+  {
+    _next = _data;
+    _recycled.clear();
+  }
+
   std::vector<unsigned int> _recycled;
 
   T *_data, _next, _top;

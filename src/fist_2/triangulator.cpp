@@ -51,12 +51,13 @@ void FistTriangulator::SetBoundary(double *points, uint32_t size, Chiraty bounda
   if (size < 2)
     return;
 
+  _alloc.clear();
   _boundary = CreateLinkedList(points, size, CLOCKWISE, boundaryCharility);
 }
 
 void FistTriangulator::AppendHole(double *points, uint32_t size, Chiraty holeCharility /* = UNKNOWN */)
 {
-  if (!size)
+  if (!size || !_boundary)
     return;
 
   Node *node = CreateLinkedList(points, size, COUNTERCLOCKWISE, holeCharility);
@@ -79,8 +80,10 @@ void FistTriangulator::AppendHole(double *points, uint32_t size, Chiraty holeCha
 
 void FistTriangulator::Triangulate()
 {
-  if (!_boundary)
+  if (!IsReady())
     return;
+
+  triangles.reserve(triangles.size() + 3 * _alloc.size() + _holes.size() * 6 + 21);
 
   RemoveHoles();
 
@@ -105,7 +108,7 @@ void FistTriangulator::Triangulate()
     _invSize = _invSize < config.tolerance /* 0 or tol ? */ ? 32767. / _invSize : 0.;
   }
 
-  EarCut(_boundary);
+  Earcut(_boundary);
 }
 
 Node *FistTriangulator::CreateLinkedList(double *points,
@@ -121,7 +124,7 @@ Node *FistTriangulator::CreateLinkedList(double *points,
   if (expectedChiraty != UNKNOWN && targetChiraty == UNKNOWN)
     targetChiraty = EvalSignedArea(points, size) > 0 ? CLOCKWISE : COUNTERCLOCKWISE;
 
-  _alloc.reserve(_alloc.size() + size);
+  _alloc.reserve(_alloc.size() + size + 3);
 
   if (expectedChiraty == UNKNOWN || targetChiraty == expectedChiraty)
   {
@@ -281,6 +284,33 @@ Node *FistTriangulator::FindBridge(Node *boundary, Node *hole) const
   return nearestBdrEdgeNode;
 }
 
+Node *FistTriangulator::SplitPolygon(Node *A, Node *B)
+{
+  /*
+      \              /                   \             /
+       \            /                     \  A      B /
+        \ A      B /          -->          \_________/
+        /          \                        __________
+       /            \                      /          \
+      /              \                    /            \
+                                         /              \
+  */
+  Node *newA = InsertNode(A->id, A->x, A->y), *newB = InsertNode(B->id, B->x, B->y);
+
+  newA->next = A->next;
+  newA->prev = newB;
+  newB->next = newA;
+  newB->prev = B->prev;
+
+  A->next->prev = newA;
+  B->prev->next = newB;
+
+  A->next = B;
+  B->prev = A;
+
+  return newB;
+}
+
 Node *FistTriangulator::RemoveHoles()
 {
   std::sort(_holes.begin(), _holes.end(), [](Node *left, Node *right) -> bool { return left->x < right->x; });
@@ -350,31 +380,136 @@ Node *FistTriangulator::RemoveRebundantVertices(Node *start, Node *end)
   return end;
 }
 
-Node *FistTriangulator::SplitPolygon(Node *A, Node *B)
+Node *FistTriangulator::CureLocalIntersections(Node *start)
 {
   /*
-      \              /                   \             /
-       \            /                     \  A      B /
-        \ A      B /          -->          \_________/
-        /          \                        __________
-       /            \                      /          \
-      /              \                    /            \
-                                         /              \
+         /                                         /
+        /   * nextNext                            /  _* nextNext
+       /     \                                   / _/
+       *------+---------* curNode      ->        *
+    prev       \       /                      prev
+                \     /
+                 \   /
+                  \ /
+                   *
+                   next
   */
-  Node *newA = InsertNode(A->id, A->x, A->y), *newB = InsertNode(B->id, B->x, B->y);
+  Node *curNode;
+  do
+  {
+    Node *prev = curNode->prev, *next = curNode->next, *nextNext = next->next;
 
-  newA->next = A->next;
-  newA->prev = newB;
-  newB->next = newA;
-  newB->prev = B->prev;
+    if ((prev->x == nextNext->x && prev->y == nextNext->y)
+        /* prev and nextNext coincident */
+        || !Intersected(prev, curNode, next, nextNext)
+        /* not intersected at all */
+        || !LocallyInside(prev, nextNext) || !LocallyInside(nextNext, prev)
+        /* outside holes */
+    )
+    {
+      curNode = curNode->next;
+      continue;
+    }
 
-  A->next->prev = newA;
-  B->prev->next = newB;
+    for (Node *node : {prev, curNode, nextNext})
+      triangles.push_back(node->id);
 
-  A->next = B;
-  B->prev = A;
+    RemoveNode(curNode);
+    RemoveNode(curNode->next);
 
-  return newB;
+    start   = nextNext;
+    curNode = start->next;
+  } while (curNode != start);
+
+  return RemoveRebundantVertices(start);
+}
+
+void FistTriangulator::ClumsyEarcut(Node *start)
+{
+  Node *curNode = start;
+  do
+  {
+    Node *anotherNode = curNode->next->next;
+    while (anotherNode != curNode->prev)
+    {
+      if (curNode->id == anotherNode->id || !ValidDiagonal(curNode, anotherNode))
+      {
+        anotherNode = anotherNode->next;
+        continue;
+      }
+
+      start = RemoveRebundantVertices(curNode, curNode->next);
+
+      Node *start2 = SplitPolygon(curNode, anotherNode);
+      start2       = RemoveRebundantVertices(start2, start2->next);
+
+      Earcut(start);
+      Earcut(start2);
+
+      return;
+    }
+    curNode = curNode->next;
+  } while (curNode != start);
+}
+
+void FistTriangulator::Earcut(Node *start, int mode /* = 0 */)
+{
+  if (!start)
+    return;
+  if (mode == 0 && config.useZCurveAccellaration)
+    AssignZOrder(start);
+
+  auto IsValidEar =
+      config.useZCurveAccellaration ? &FistTriangulator::ValidHashedEar : &FistTriangulator::ValidEar;
+
+  Node *curNode = start, *prev = nullptr, *next = nullptr;
+
+  // iterate through ears, slicing them one by one
+  while (curNode->prev != curNode->next)
+  {
+    prev = curNode->prev;
+    next = curNode->next;
+
+    if (IsValidEar(curNode))
+    {
+      // cut off the triangle
+      triangles.emplace_back(prev->id);
+      triangles.emplace_back(curNode->id);
+      triangles.emplace_back(next->id);
+
+      RemoveNode(curNode);
+
+      // skipping the next vertex leads to less sliver triangles
+      curNode = start = next->next;
+      continue;
+    }
+
+    curNode = next;
+
+    // if we looped through the whole remaining polygon and can't find any more ears
+    if (curNode == start)
+    {
+      // try filtering points and slicing again
+      if (mode == 0)
+      {
+        curNode = RemoveRebundantVertices(curNode);
+        Earcut(curNode, 1);
+      }
+      // if this didn't work, try curing all small self-intersections locally
+      else if (mode == 1)
+      {
+        curNode = RemoveRebundantVertices(curNode);
+        curNode = CureLocalIntersections(curNode);
+        Earcut(curNode, 2);
+      }
+      // as a last resort, try splitting the remaining polygon into two
+      else if (mode == 2)
+      {
+        ClumsyEarcut(curNode);
+      }
+      break;
+    }
+  }
 }
 
 double FistTriangulator::EvalSignedArea(double *points, uint32_t size) const
@@ -389,12 +524,12 @@ double FistTriangulator::EvalSignedArea(double *points, uint32_t size) const
   return area;
 }
 
-double FistTriangulator::EvalSignedArea(const Node *const A, const Node *const B, const Node *const C) const
+double FistTriangulator::EvalSignedArea(const Node *const A, const Node *const B, const Node *const C)
 {
   return (B->y - A->y) * (C->x - B->x) - (B->x - A->x) * (C->y - B->y);
 }
 
-bool FistTriangulator::LocallyInside(const Node *const base, const Node *const point) const
+bool FistTriangulator::LocallyInside(const Node *const base, const Node *const point)
 {
   bool cw = EvalSignedArea(base->prev, base, base->next) < 0;
 
@@ -417,7 +552,7 @@ bool FistTriangulator::LocallyInside(const Node *const base, const Node *const p
   return EvalSignedArea(base, point, base->prev) < 0 || EvalSignedArea(base, base->next, point) < 0;
 }
 
-bool FistTriangulator::MiddleInside(const Node *const A, const Node *const B) const
+bool FistTriangulator::MiddleInside(const Node *const A, const Node *const B)
 {
   // test if a point (which is the midpoint of A and B) is in a polygon by counting the segments on its right
   double midX = (A->x + B->x) / 2, midY = (A->y + B->y) / 2;
@@ -426,7 +561,27 @@ bool FistTriangulator::MiddleInside(const Node *const A, const Node *const B) co
   return depth & 0b1; /* odd depth indicates internally */
 }
 
-uint32_t FistTriangulator::EvalDepth(const Node *const base, double x, double y) const
+bool FistTriangulator::ValidDiagonal(const Node *A, const Node *B) const
+{
+  if (A->next->id == B->id || A->prev->id == B->id) /* is border segment */
+    return false;
+  if (IntersectedWithPolygon(A, B, A))
+    return false;
+
+  bool locallyVisibleChecked = LocallyInside(A, B) && LocallyInside(B, A) && MiddleInside(A, B) &&
+                               /* does not create opposite-facing sectors */
+                               (EvalSignedArea(A, B->prev, B) != 0. || EvalSignedArea(A, B->prev, B) != 0.);
+  if (locallyVisibleChecked)
+    return true;
+
+  bool zeroLengthChecked = A->x == B->x && A->y == B->y && EvalSignedArea(A->prev, A, A->next) &&
+                           EvalSignedArea(B->prev, B, B->next);
+  return zeroLengthChecked;
+
+  return false;
+}
+
+uint32_t FistTriangulator::EvalDepth(const Node *const base, double x, double y)
 {
   const Node *curNode = base;
   uint32_t depth      = 0;
@@ -454,12 +609,54 @@ bool FistTriangulator::PointInTriangle(double Ax,
                                        double Cx,
                                        double Cy,
                                        double Px,
-                                       double Py) const
+                                       double Py)
 {
   // todo: the triangle is CW?
   bool res = (Cx - Px) * (Ay - Py) >= (Ax - Px) * (Cy - Py) &&
              (Ax - Px) * (By - Py) >= (Bx - Px) * (Ay - Py) && (Bx - Px) * (Cy - Py) >= (Cx - Px) * (By - Py);
   return res;
+}
+
+bool FistTriangulator::Intersected(const Node *L11, const Node *L12, const Node *L21, const Node *L22)
+{
+  /* positive: 1, zero: 0, negative: -1 */
+  static auto GetSign = [](double val) -> int { return (val > 0.) - (val < 0.); };
+  /* check if B is on A,C, knowing that A, B, C collinear */
+  static auto PointOnSegment = [](const Node *A, const Node *B, const Node *C) -> bool {
+    bool xChecked = B->x <= std::max<double>(A->x, C->x) && B->x >= std::min<double>(A->x, C->x);
+    bool yChecked = B->y <= std::max<double>(A->y, C->y) && B->y >= std::min<double>(A->y, C->y);
+    return xChecked && yChecked;
+  };
+
+  int o1 = GetSign(EvalSignedArea(L11, L12, L21));
+  int o2 = GetSign(EvalSignedArea(L11, L12, L22));
+  int o3 = GetSign(EvalSignedArea(L21, L22, L11));
+  int o4 = GetSign(EvalSignedArea(L21, L22, L12));
+
+  if (o1 != o2 && o3 != o4)
+    return true;  // general case
+
+  if ((o1 == 0 && PointOnSegment(L11, L21, L12)) || (o2 == 0 && PointOnSegment(L11, L22, L12)) ||
+      (o3 == 0 && PointOnSegment(L21, L11, L22)) || (o4 == 0 && PointOnSegment(L21, L12, L22)))
+    return true;  // collinear
+
+  return false;
+}
+
+bool FistTriangulator::IntersectedWithPolygon(const Node *A, const Node *B, const Node *polygon)
+{
+  const Node *curNode = polygon;
+  do
+  {
+    bool isAOrB = curNode->id == A->id || curNode->next->id == A->id || curNode->id == B->id ||
+                  curNode->next->id == B->id; /* use id to avoid added diagonal when connecting holes */
+    if (!isAOrB && Intersected(curNode, curNode->next, A, B))
+      return true;
+
+    curNode = curNode->next;
+  } while (curNode != polygon);
+
+  return false;
 }
 
 int32_t FistTriangulator::EvalZOrder(double x, double y) const

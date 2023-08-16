@@ -38,13 +38,17 @@ public:
 
   // internal charility: clockwise for the boundary and CCW for the holes.
   // if the charility is unknown, it will be calculated internally.
+  // add boundary then holes
   void SetBoundary(double *points, uint32_t size, Chiraty boundaryChirality = UNKNOWN);
   void AppendHole(double *points, uint32_t size, Chiraty holeCharility = UNKNOWN);
   void Triangulate();
 
   inline bool IsReady() const { return !!_boundary; }
 
+  std::vector<uint32_t> triangles;
+
 protected:
+  // border manipulations
   Node *CreateLinkedList(double *points,
                          uint32_t size,
                          Chiraty expectedChiraty = CLOCKWISE,
@@ -53,17 +57,28 @@ protected:
   Node *SplitPolygon(Node *A, Node *B);
   Node *RemoveHoles();
   Node *RemoveRebundantVertices(Node *start, Node *end = nullptr);
+  Node *CureLocalIntersections(Node *start);
+  void ClumsyEarcut(Node *start);
+  void Earcut(Node *start, int mode = 0); /* mode will be increased autoly to handle failure */
 
+  // geometric tester
   double EvalSignedArea(double *points, uint32_t size) const; /* positive if CCW */
-  double EvalSignedArea(const Node *const A,
-                        const Node *const B,
-                        const Node *const C) const; /* positive if CCW */
-  bool LocallyInside(const Node *const base, const Node *const point) const;
-  bool MiddleInside(const Node *const A, const Node *const B) const;
-  uint32_t EvalDepth(const Node *const base, double x, double y) const;
-  bool PointInTriangle(double Ax, double Ay, double Bx, double By, double Cx, double Cy, double Px, double Py)
-      const;
+  static double EvalSignedArea(const Node *const A,
+                               const Node *const B,
+                               const Node *const C); /* positive if CCW */
+  static bool LocallyInside(const Node *const base, const Node *const point);
+  static bool MiddleInside(const Node *const A, const Node *const B);
+  bool ValidDiagonal(const Node *A, const Node *B) const;
+  static uint32_t EvalDepth(const Node *const base, double x, double y);
+  static bool
+  PointInTriangle(double Ax, double Ay, double Bx, double By, double Cx, double Cy, double Px, double Py);
+  // static bool PointOnSegment(Node *L1, Node *L2, Node *point);
+  static bool Intersected(const Node *L11, const Node *L12, const Node *L21, const Node *L22);
+  static bool IntersectedWithPolygon(const Node *A, const Node *B, const Node *polygon);
+  static bool ValidEar(const Node *node);
+  static bool ValidHashedEar(const Node *node);
 
+  // z curve acceleration
   int32_t EvalZOrder(double x, double y) const;
   void AssignZOrder(Node *borderNode);
 
