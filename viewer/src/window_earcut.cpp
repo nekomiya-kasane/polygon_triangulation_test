@@ -12,11 +12,14 @@
 #include "polygon_generator.h"
 
 #include <iostream>
+#include <random>
 #include <string>
 
 std::vector<double> data = {120, 20, 20, 20, 520, 20, 620, 620, 20, 720};
 FistTriangulator tri(data.size() / 2);
 std::vector<std::pair<size_t, size_t>> components;
+
+std::vector<std::pair<size_t, size_t>> edges;
 
 enum State
 {
@@ -50,6 +53,15 @@ void DrawTriangles(const Vector2 &A, const Vector2 &B, const Vector2 &C, unsigne
   DrawTextEx(states.font, ("T" + std::to_string(index)).c_str(), Vector2{midX, midY}, 20, 0, GREEN);
 }
 
+std::default_random_engine e;
+std::uniform_int_distribution<unsigned int> u(0, 255);
+
+Color RandomColor()
+{
+  return Color{static_cast<unsigned char>(u(e) / 2 + 128), static_cast<unsigned char>(u(e) / 2 + 128),
+               static_cast<unsigned char>(u(e) / 2 + 128), 255};
+}
+
 int main()
 {
   // visualization
@@ -77,6 +89,7 @@ int main()
     {
       data.clear();
       tri.triangles.clear();
+      tri = FistTriangulator(1);
     }
     else if (IsKeyReleased(KEY_ENTER))
     {
@@ -115,8 +128,9 @@ int main()
         state = NONE;
       }
     }
-
     states.mousePos = GetMousePosition();
+    if (state == ADDING_POINTS)
+    {}
 
     // draw
     BeginDrawing();

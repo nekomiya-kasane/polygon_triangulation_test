@@ -48,7 +48,11 @@ public:
     return res;
   }
 
-  inline void remove(T *ptr) { _recycled.push_back(static_cast<unsigned int>(ptr - _data)); }
+  inline void remove(T *ptr)
+  {
+    assert(ptr >= _data && ptr <= _top - 1);
+    _recycled.push_back(static_cast<unsigned int>(ptr - _data));
+  }
 
   inline unsigned int size() const { return static_cast<unsigned int>(_next - _data - _recycled.size()); }
 
