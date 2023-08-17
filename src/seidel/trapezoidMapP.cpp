@@ -102,7 +102,7 @@ void TrapezoidMapP::Build()
       n = std::log(n);
       ++i;
     }
-    config.phase = i < 10 ? 10 : i - 1;
+    config.phase = i - 1;
   }
 
   // leaves

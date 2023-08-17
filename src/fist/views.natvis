@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="Allocator&lt;*&gt;">
+    <DisplayString>Size: {_next - _data - _recycled.size()}, Capacity: {_top - _data}</DisplayString>
+    <Expand>
+      <Item Name="[available]">_recycled</Item>
+      <Item Name="[size]">_next - _data</Item>
+      <Item Name="[capacity]">_top - _data</Item>
+      <ArrayItems>
+        <Size>_next - _data</Size>
+        <ValuePointer>_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="Vec2">
+    <DisplayString>({x}, {y})</DisplayString>
+  </Type>
+  <Type Name="Node">
+    <DisplayString>({id}, {zid}, [{prev->id}, {next->id}], [{x}, {y}])</DisplayString>
+  </Type>
+  <Type Name="RecyclableAllocator&lt;*,*&gt;">
+    <DisplayString>Size: {_next - _data}, Capacity: {_top - _data}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_next - _data</Item>
+      <Item Name="[capacity]">_top - _data</Item>
+      <ArrayItems>
+        <Size>_next - _data</Size>
+        <ValuePointer>_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>

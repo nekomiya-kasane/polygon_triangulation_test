@@ -12,8 +12,8 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 set(TestSources
-	"basic.cpp"
-	"ptptco.cpp"
+	"seidel/basic.cpp"
+	"seidel/ptptco.cpp"
 )
 
 enable_testing()

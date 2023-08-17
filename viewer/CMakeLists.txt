@@ -41,6 +41,20 @@ target_link_libraries(
   raygui
 )
 
+set(ViewerEarcutSources 
+	"src/window_earcut.cpp"
+	"src/polygon_generator.h"
+	"src/polygon_generator.cpp"
+)
+
+add_executable(fist_triangulation_viewer ${ViewerEarcutSources})
+target_link_libraries(
+  fist_triangulation_viewer PRIVATE
+  fist_triangulator
+  raylib
+  raygui
+)
+
 #add_custom_command(
 #	TARGET seidel_triangulation_viewer
 #	POST_BUILD  
@@ -59,4 +73,5 @@ add_executable(seidel_triangulation_meter ${MeterSources})
 target_link_libraries(
   seidel_triangulation_meter PRIVATE
   seidel_triangulator
+  fist_triangulator
 )

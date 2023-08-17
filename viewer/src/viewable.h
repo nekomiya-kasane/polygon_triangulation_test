@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "triangulator.h"
+#include "seidel/triangulator.h"
 
 #ifndef USE_EASYX
 #  pragma warning(push, 0)
