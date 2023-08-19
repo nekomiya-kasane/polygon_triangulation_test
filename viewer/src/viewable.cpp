@@ -255,16 +255,16 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       midX           = (lowHighX + lowLowX + highHighX + highLowX) / 4;
       midY           = (highY + lowY) / 2;
 
-      assert(lowHighX >= 0 && lowHighX <= _box.x);
-      assert(lowLowX >= 0 && lowLowX <= _box.x);
-      assert(highLowX >= 0 && highLowX <= _box.x);
-      assert(highHighX >= 0 && highHighX <= _box.x);
+      // assert(lowHighX >= 0 && lowHighX <= _box.x);
+      // assert(lowLowX >= 0 && lowLowX <= _box.x);
+      // assert(highLowX >= 0 && highLowX <= _box.x);
+      // assert(highHighX >= 0 && highHighX <= _box.x);
 
-      assert(lowY >= 0 && lowY <= _box.y);
-      assert(highY >= 0 && highY <= _box.y);
+      // assert(lowY >= 0 && lowY <= _box.y);
+      // assert(highY >= 0 && highY <= _box.y);
 
-      assert(midX >= 0 && midX <= _box.x);
-      assert(midY >= 0 && midY <= _box.y);
+      // assert(midX >= 0 && midX <= _box.x);
+      // assert(midY >= 0 && midY <= _box.y);
 
       // highlight regions containing the cursor
       color = overrideColor ? color

@@ -615,7 +615,10 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
   // not the last region
   else
   {
-    int res = Higher(originalRegion.low, segment.highVertex, segment.lowVertex) ? 1 : -1;
+    int res = Higher(originalRegion.low, segment.lowVertex) || 
+                      Higher(originalRegion.low, segment.highVertex, segment.lowVertex)
+                  ? 1
+                  : -1;
     if (res == 1)  // to low right
     {
       // clang-format off
@@ -1095,7 +1098,7 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
   if ((leftVertex - rightVertex).Norm1() < config.tolerance)
   {
     bool res   = Higher(_prevVertices[leftVertexID], rightVertexID);
-    leftVertex = rightVertex;
+    // leftVertex = rightVertex;
     return res;
   }
 
@@ -1123,7 +1126,7 @@ bool TrapezoidMapP::Higher(VertexID refVertexID, VertexID highVertexID, VertexID
 
   const Vertex &highVertex = _vertices[highVertexID], &lowVertex = _vertices[lowVertexID];
 
-  double len = (lowVertex - highVertex).NormSq();
+  double len = (lowVertex - highVertex).Norm2();
 
 #define _DIST_TO_GIVEN_SEG_(VERTEX_ID) ((lowVertex - highVertex) ^ (highVertex - _vertices[VERTEX_ID])) / len;
 

@@ -143,25 +143,21 @@ bool ResolveConfig(Triangulator &tri)
 
 int main()
 {
-  std::vector<Vec2Set> points = {{{29, 19},
-                                  {335, 60},
-                                  {398, 108},
-                                  {516, 220},
-                                  {507, 468},
-                                  {531, 469},
-                                  {549, 367},
-                                  {571, 26},
-                                  {733, 72},
-                                  {859, 416},
-                                  {848, 599},
-                                  {738, 639},
-                                  {832, 687},
-                                  {849, 741},
-                                  {792, 769},
-                                  {248, 872},
-                                  {227, 886},
-                                  {136, 895},
-                                  {133, 877}}};
+  std::vector<Vec2Set> points = {{{10, 0},
+                                  {91, 41},
+                                  {67, 74},
+                                  {3, 10},
+                                  {-10, 99},
+                                  {-50, 87},
+                                  {-8, 6},
+                                  {-98, 21},
+                                  {-98, -21},
+                                  {-8, -6},
+                                  {-50, -87},
+                                  {-10, -99},
+                                  {3, -10},
+                                  {67, -74},
+                                  {91, -41}}};
   // std::vector<Vec2Set> points = {
   //     {{36, 5}, {62, 0}, {94, 66}, {95, 72}, {100, 92}, {73, 76}, {26, 84}, {21, 100}, {0, 40}}};
   //  std::vector<Vec2Set> points = {{{-1, -1}, {-1, 1}, {1, 1}, {1, -1}}, {{-2, -2}, {-2, 2}, {2, 2}, {2,
@@ -201,6 +197,7 @@ int main()
   ViewableTriangulator tri;
   auto updateConfig = [&font](ViewableTriangulator &tri) {
     tri.config.useGivenSeed                = true;
+    tri.config.tolerance                   = 20;
     tri.config.seed                        = 1;
     tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_NORMAL;
 #  ifdef _DEBUG
