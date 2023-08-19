@@ -96,7 +96,8 @@ SEIDEL_PRIVATE:
   // clang-format off
 SEIDEL_PRIVATE:
   inline static bool Valid(AnyID index) { return index != INVALID_INDEX; }
-  inline static bool Infinite(AnyID index) { return index == INFINITY_INDEX; }
+  inline static bool Finite(AnyID index) { return index != INVALID_INDEX && index != INFINITY_INDEX; }
+  inline static bool Ininite(AnyID index) { return index == INFINITY_INDEX; }
   // clang-format on
 
   // memory allocating
@@ -139,11 +140,11 @@ SEIDEL_PRIVATE:
                                 bool checkRight);
 
   NodePair SplitRegionByVertex(RegionID regionID, VertexID vertexID);
-  void SplitRegionBySegment(RegionID regionID,
+  bool SplitRegionBySegment(RegionID regionID,
                             SegmentID segmentID,
                             int &type /* 0 - high, 1 - mid, 2 - low */);
 
-  void UpdateAbove(Region &originalRegionID,
+  bool UpdateAbove(Region &originalRegionID,
                    Region &highRegionID,
                    Region &lowRegionID,
                    SegmentID segmentID,

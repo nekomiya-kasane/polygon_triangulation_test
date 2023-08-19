@@ -183,7 +183,7 @@ int main()
   ViewableTriangulator tri;
   tri.config.useGivenSeed                = true;
   tri.config.seed                        = 1;
-  tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING;
+  tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_NORMAL;
 #  ifdef _DEBUG
   tri.config.incremental                 = true;
   tri.config.maxSegment                  = 1;
