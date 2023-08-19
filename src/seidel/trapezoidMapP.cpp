@@ -305,8 +305,8 @@ NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID
   lowRegion.low              = highRegion.low;
   lowRegion.left             = highRegion.left;
   lowRegion.right            = highRegion.right;
-  lowRegion.highNeighbors[0] = _nodes.GetIndex(highRegion.nodeID);
-  lowRegion.highNeighbors[1] = _nodes.GetIndex(highRegion.nodeID);
+  lowRegion.highNeighbors[0] = _nodes[highRegion.nodeID].value;
+  lowRegion.highNeighbors[1] = _nodes[highRegion.nodeID].value;
   lowRegion.lowNeighbors[0]  = highRegion.lowNeighbors[0];
   lowRegion.lowNeighbors[1]  = highRegion.lowNeighbors[1];
 
@@ -326,8 +326,8 @@ NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID
 
   // update highRegion
   highRegion.low             = vertexID;
-  highRegion.lowNeighbors[0] = _nodes.GetIndex(lowRegion.nodeID);
-  highRegion.lowNeighbors[1] = _nodes.GetIndex(lowRegion.nodeID);
+  highRegion.lowNeighbors[0] = _nodes[lowRegion.nodeID].value;
+  highRegion.lowNeighbors[1] = _nodes[lowRegion.nodeID].value;
 
   // new NodeID for the original Region since it's now a leaf of the original node
   Node &newNodeForHighRegion = NewNode(Node::REGION, regionID);
@@ -810,11 +810,11 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         RegionID leftBelowRegionID = leftRegion->lowNeighbors[1];  // right most
         Region &leftBelowRegion    = _regions[leftBelowRegionID];
 
-        if (Higher(_vertices[leftBelowRegion.low], intersection))
-        {
-          leftRegionID = leftBelowRegionID;
-          leftRegion   = &leftBelowRegion;
-        }
+        // if (Higher(_vertices[leftBelowRegion.low], intersection))
+        //{
+        //   leftRegionID = leftBelowRegionID;
+        //   leftRegion   = &leftBelowRegion;
+        // }
       }
 
       AddVertex(leftNewVertexID, leftRegion->nodeID);
@@ -928,11 +928,11 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         RegionID rightBelowRegionID = rightRegion->lowNeighbors[0];  // left most
         Region &rightBelowRegion    = _regions[rightBelowRegionID];
 
-        if (Higher(_vertices[rightBelowRegion.low], intersection))
-        {
-          rightRegionID = rightBelowRegionID;
-          rightRegion   = &rightBelowRegion;
-        }
+        // if (Higher(_vertices[rightBelowRegion.low], intersection))
+        //{
+        //   rightRegionID = rightBelowRegionID;
+        //   rightRegion   = &rightBelowRegion;
+        // }
       }
 
       AddVertex(leftNewVertexID, rightRegion->nodeID);
@@ -1089,53 +1089,69 @@ void TrapezoidMapP::AssignDepth()
 
 bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
-  const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
+  Vertex &leftVertex        = const_cast<Vertex &>(_vertices[leftVertexID]);
+  const Vertex &rightVertex = _vertices[rightVertexID];
 
-  int res = Higher(leftVertex, rightVertex);
-  if (res > -1)
-    return !!res;
+  if ((leftVertex - rightVertex).Norm1() < config.tolerance)
+  {
+    bool res   = Higher(_prevVertices[leftVertexID], rightVertexID);
+    leftVertex = rightVertex;
+    return res;
+  }
 
-  // same x, y: latter vertex always on the right, is this OK?
-  // todo: in paper, another random integer is assigned to determine this.
-  assert(leftVertexID != rightVertexID);
-  return leftVertexID < rightVertexID;
-}
-
-int TrapezoidMapP::Higher(const Vertex &leftVertex, const Vertex &rightVertex) const
-{
-  if (leftVertex.y > rightVertex.y)
+  if (leftVertex.y >= rightVertex.y)
     return true;
-  if (leftVertex.y < rightVertex.y)
+  if (leftVertex.y <= rightVertex.y)
     return false;
 
   // same y
-  if (leftVertex.x < rightVertex.x)
+  if (leftVertex.x <= rightVertex.x)
     return true;
-  if (leftVertex.x > rightVertex.x)
+  if (leftVertex.x >= rightVertex.x)
     return false;
 
-  return -1;  // uncertain
+  // same x, y: latter vertex always on the right, is this OK?
+  // todo: in paper, another random integer is assigned to determine this.
+  // won't be here
+  assert(leftVertexID != rightVertexID && false);
+  return leftVertexID < rightVertexID;
 }
 
 bool TrapezoidMapP::Higher(VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const
 {
-  const Vertex &refVertex = _vertices[refVertexID], &highVertex = _vertices[highVertexID],
-               &lowVertex = _vertices[lowVertexID];
-  int res                 = Higher(refVertex, highVertex, lowVertex);
-  if (res > -1)
-    return !!res;
+  // if polygon not intersected, then we ca
 
-  return refVertexID < std::min(highVertexID, lowVertexID);
-}
+  const Vertex &highVertex = _vertices[highVertexID], &lowVertex = _vertices[lowVertexID];
 
-int TrapezoidMapP::Higher(const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const
-{
-  auto highLow = highVertex - lowVertex;
-  double cross = highLow ^ (refVertex - lowVertex);
-  if (cross != 0.)
-    return cross > 0;
+  double len = (lowVertex - highVertex).NormSq();
 
-  return -1;
+#define _DIST_TO_GIVEN_SEG_(VERTEX_ID) ((lowVertex - highVertex) ^ (highVertex - _vertices[VERTEX_ID])) / len;
+
+  double dist = _DIST_TO_GIVEN_SEG_(refVertexID);  // todo: cache this
+
+  if (std::abs(dist) > config.tolerance)
+    return dist > 0;
+
+  VertexID prevVertexID = _prevVertices[refVertexID];
+  double distPrev       = _DIST_TO_GIVEN_SEG_(prevVertexID);
+
+  if (std::abs(distPrev) > config.tolerance)
+    return distPrev > 0;
+
+  VertexID nextVertexID = _endVertices[refVertexID];
+  double distNext       = _DIST_TO_GIVEN_SEG_(nextVertexID);
+
+  if (std::abs(distNext) > config.tolerance)
+    return distNext > 0;
+
+  // while (prevVertexID != refVertexID)  // ring back
+  //{
+  //   distPrev = distToGivenSeg(prevVertexID);
+  //   if
+  // }
+
+  assert(false);  // bad to be here
+  return dist > 0;
 }
 
 int TrapezoidMapP::Intersected(VertexID segment1_Start,

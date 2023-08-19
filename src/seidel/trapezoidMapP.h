@@ -97,7 +97,7 @@ SEIDEL_PRIVATE:
 SEIDEL_PRIVATE:
   inline static bool Valid(AnyID index) { return index != INVALID_INDEX; }
   inline static bool Finite(AnyID index) { return index != INVALID_INDEX && index != INFINITY_INDEX; }
-  inline static bool Ininite(AnyID index) { return index == INFINITY_INDEX; }
+  inline static bool Infinite(AnyID index) { return index == INFINITY_INDEX; }
   // clang-format on
 
   // memory allocating
@@ -157,15 +157,15 @@ SEIDEL_PRIVATE:
 
   // geometric calculation
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
-  int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
   bool Higher /* Lefter */ (VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const;
-  int Higher /* Lefter */ (const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const;
   int Intersected(VertexID segment1_Start,
                   VertexID segment1_End,
                   VertexID segment2_Start,
                   VertexID segment2_End,
                   Vertex *const intersection) const;
-  // bool PointOnSegment();  // todo: "T" type coincidence
+  double PointSegmentDistance(VertexID pointID,
+                              VertexID startID,
+                              VertexID endID) const;  // todo: "T" type coincidence
 };
 
 #endif SEIDEL_TRAPEZOIDMAPP_H

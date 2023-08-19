@@ -38,7 +38,9 @@ struct Vec2
   friend bool operator==(const Vec2 &iVec1, const Vec2 &iVec2);
   bool EqualTo(const Vec2 &iOther, double iTol) const;
   double NormSq() const;
-  double Norm() const;
+  double Norm2() const;
+  double Norm1() const;
+  double NormInf() const;
   Vec2 GetNormalized() const;
 
   static const Vec2 rightTopMost, leftBottomMost;

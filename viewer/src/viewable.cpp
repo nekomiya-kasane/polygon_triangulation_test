@@ -280,8 +280,8 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       }
 
       // background
-      DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.3f));
-      DrawTriangle(pts[0], pts[2], pts[3], Fade(color, 0.3f));
+      DrawTriangle(pts[0], pts[1], pts[2], Fade(color, 0.4f));
+      DrawTriangle(pts[0], pts[2], pts[3], Fade(color, 0.4f));
 
       DrawTextEx(drawingConfig.font, label.c_str(), Vector2{midX, midY}, 20.f / _zoom, 0.f, color);
       DrawCircle(static_cast<int>(midX), static_cast<int>(midY), 2 / _zoom, color);
@@ -365,7 +365,8 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       for (const auto neighborID :
            {region.highNeighbors[0], region.highNeighbors[1], region.lowNeighbors[0], region.lowNeighbors[1]})
         if (Valid(neighborID) && !Infinite(neighborID))
-          (*methods.regionDrawer)(_regions[neighborID], "S" + std::to_string(neighborID), PURPLE, true);
+          (*methods.regionDrawer)(_regions[neighborID], "S" + std::to_string(neighborID), Fade(WHITE, 0.3),
+                                  true);
       (*methods.regionDrawer)(region, "S" + std::to_string(indicators.curRegionID), Color(255, 145, 40),
                               true);
     }

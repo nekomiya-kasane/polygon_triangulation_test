@@ -40,7 +40,7 @@ int main()
       try
       {
         // Triangulator tri;
-        tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_GREEDY;
+        // tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_GREEDY;
         // tri.AddPolygon(points[0], true);
         // tri.config.useGivenSeed = true;
         // tri.Build();
@@ -57,7 +57,7 @@ int main()
         j--;
         continue;
       }
-      interval += since(start).count() / 1e9;
+      // interval += since(start).count() / 1e9;
     }
     interval /= m;
 

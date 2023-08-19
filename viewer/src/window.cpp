@@ -180,15 +180,6 @@ int main()
 
   // points = PolygonGenerator::GenerateRandomPolygon(1000);
 
-  ViewableTriangulator tri;
-  tri.config.useGivenSeed                = true;
-  tri.config.seed                        = 1;
-  tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_NORMAL;
-#  ifdef _DEBUG
-  tri.config.incremental                 = true;
-  tri.config.maxSegment                  = 1;
-#  endif
-
   // visualization
   const int screenWidth    = 1920;
   const int screenHeight   = 1080;
@@ -206,7 +197,19 @@ int main()
   {
     TRACE("Font not ready.");
   }
-  tri.drawingConfig.font = font;
+
+  ViewableTriangulator tri;
+  auto updateConfig = [&font](ViewableTriangulator &tri) {
+    tri.config.useGivenSeed                = true;
+    tri.config.seed                        = 1;
+    tri.configTri.mountainResolutionMethod = Triangulator::ConfigTri::CHIMNEY_CLIPPING_NORMAL;
+#  ifdef _DEBUG
+    tri.config.incremental                 = true;
+    tri.config.maxSegment                  = 1;
+#  endif
+    tri.drawingConfig.font                 = font;
+  };
+  updateConfig(tri);
 
   Vec2 lt, rb;
   bool first = true;
@@ -286,7 +289,8 @@ int main()
         }
         if (first || states.generateRandom)
         {
-          tri      = ViewableTriangulator{};
+          tri = ViewableTriangulator{};
+          updateConfig(tri);
           size_t i = 0;
           for (const auto &contour : points)
           {

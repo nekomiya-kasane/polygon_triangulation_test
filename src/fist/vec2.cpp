@@ -1,7 +1,7 @@
+#include "vec2.h"
 #include <algorithm>
 #include <list>
 #include <random>
-#include "vec2.h"
 
 Vec2::Vec2(double iX, double iY) : x(iX), y(iY) {}
 
@@ -92,14 +92,24 @@ double Vec2::NormSq() const
   return x * x + y * y;
 }
 
-double Vec2::Norm() const
+double Vec2::Norm2() const
 {
   return std::sqrt(NormSq());
 }
 
+double Vec2::Norm1() const
+{
+  return std::max(std::abs(x), std::abs(y));
+}
+
+double Vec2::NormInf() const
+{
+  return std::abs(x + y);
+}
+
 Vec2 Vec2::GetNormalized() const
 {
-  return *this / Norm();
+  return *this / Norm2();
 }
 
 Vec2 operator*(double iNum, const Vec2 &iVec)

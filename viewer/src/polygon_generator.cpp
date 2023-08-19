@@ -244,7 +244,8 @@ double PointToLineDist(Vec2 iPoint, Vec2 iStart, Vec2 iEnd)
   auto lineVec = iEnd - iStart;
   auto t       = (iPoint - iStart) * lineVec / lineVec.NormSq();
   t            = t < 0. ? 0. : t > 1. ? 1. : t;
-  auto res     = (iStart + t * lineVec - iPoint).Norm();
+  auto diff    = (iStart + t * lineVec - iPoint);
+  auto res     = std::sqrt(diff.x * diff.x + diff.y * diff.y);
   return res;
 }
 
