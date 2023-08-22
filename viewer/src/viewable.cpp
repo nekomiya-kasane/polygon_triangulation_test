@@ -176,18 +176,21 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       VertexID id   = _vertices.GetIndex(&vertex);
       Vector2 pt[2] = {{0, y(vertex.y)}, {8192, y(vertex.y)}};
 
-      const Region &leftRegion = _regions[_lowNeighbors[id].left];
-      if (!Infinite(leftRegion.left) && Valid(leftRegion.left))
+      if (Finite(_lowNeighbors[id].left))
       {
-        pt[0].x = evalX(y(vertex.y), _segments[leftRegion.left]);
+        const Region &leftRegion = _regions[_lowNeighbors[id].left];
+        if (Finite(leftRegion.left))
+        {
+          pt[0].x = evalX(y(vertex.y), _segments[leftRegion.left]);
+        }
+        const Region &rightRegion = Finite(_lowNeighbors[id].right) ? _regions[_lowNeighbors[id].right]
+                                                                    : _regions[_lowNeighbors[id].left];
+        if (Finite(rightRegion.right))
+        {
+          pt[1].x = evalX(y(vertex.y), _segments[rightRegion.right]);
+        }
+        DrawLineEx(pt[0], pt[1], 1.f / _zoom, Fade(YELLOW, 0.35f));
       }
-      const Region &rightRegion = Valid(_lowNeighbors[id].right) ? _regions[_lowNeighbors[id].right]
-                                                                 : _regions[_lowNeighbors[id].left];
-      if (!Infinite(rightRegion.right) && Valid(leftRegion.right))
-      {
-        pt[1].x = evalX(y(vertex.y), _segments[rightRegion.right]);
-      }
-      DrawLineEx(pt[0], pt[1], 1.f / _zoom, Fade(YELLOW, 0.35f));
 
       // indicator
       if (std::abs(_focus.x - x(vertex.x)) <= drawingConfig.vertexRadius &&
@@ -357,37 +360,37 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
      << _nodes.Capability() << std::endl;
   _infoBuf += ss.str();
 
-  if (Valid(indicators.curRegionID) && !Infinite(indicators.curRegionID))
+  if (Finite(indicators.curRegionID))
   {
     Region &region = _regions[indicators.curRegionID];
     if (methods.regionDrawer)
     {
       for (const auto neighborID :
            {region.highNeighbors[0], region.highNeighbors[1], region.lowNeighbors[0], region.lowNeighbors[1]})
-        if (Valid(neighborID) && !Infinite(neighborID))
+        if (Finite(neighborID))
           (*methods.regionDrawer)(_regions[neighborID], "S" + std::to_string(neighborID), PURPLE, true);
       (*methods.regionDrawer)(region, "S" + std::to_string(indicators.curRegionID), Color(255, 145, 40),
                               true);
     }
     if (methods.segmentDrawer)
     {
-      if (!Infinite(region.left))
+      if (Finite(region.left))
         (*methods.segmentDrawer)(_segments[region.left], "e" + std::to_string(region.left), WHITE, true);
-      if (!Infinite(region.right))
+      if (Finite(region.right))
         (*methods.segmentDrawer)(_segments[region.right], "e" + std::to_string(region.right), WHITE, true);
     }
     if (methods.vertexDrawer)
     {
-      if (!Infinite(region.low) && Valid(region.low))
+      if (Finite(region.low))
         (*methods.vertexDrawer)(_vertices[region.low], "v" + std::to_string(region.low), WHITE, true);
-      if (!Infinite(region.high) && Valid(region.low))
+      if (Finite(region.high))
         (*methods.vertexDrawer)(_vertices[region.high], "v" + std::to_string(region.high), WHITE, true);
     }
 
     _infoBuf += "S" + std::to_string(indicators.curRegionID) + ": " + region.ToString() + "\n";
   }
 
-  if (Valid(indicators.curVertexID) && !Infinite(indicators.curVertexID) && methods.vertexDrawer)
+  if (Finite(indicators.curVertexID) && methods.vertexDrawer)
   {
     const Vertex &vertex = _vertices[indicators.curVertexID];
     (*methods.vertexDrawer)(vertex, "v" + std::to_string(indicators.curVertexID), YELLOW, true);
@@ -430,7 +433,7 @@ Triangles ViewableTriangulator::Triangulate() const
     size_t i = 0;
     std::cout << "\n// check the trapezoid map" << std::endl;
     auto idStr = [](AnyID id) -> std::string {
-      if (!Valid(id))
+      if (Invalid(id))
         return "Nil";
       if (Infinite(id))
         return "Inf";

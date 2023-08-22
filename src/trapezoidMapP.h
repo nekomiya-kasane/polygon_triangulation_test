@@ -87,7 +87,7 @@ SEIDEL_PRIVATE:
      * below, they're stored in `left` and `right` */
     RegionID left = INVALID_INDEX, mid = INVALID_INDEX, right = INVALID_INDEX;
 
-    inline int Size() const { return Valid(left) + Valid(mid) + Valid(right); }
+    inline int Size() const { return Finite(left) + Finite(mid) + Finite(right); }
   };
   /* regions right below a vertex, 3 at most for polygons */
   std::vector<VertexNeighborInfo> _lowNeighbors;
@@ -96,7 +96,8 @@ SEIDEL_PRIVATE:
 
   // clang-format off
 SEIDEL_PRIVATE:
-  inline static bool Valid(AnyID index) { return index != INVALID_INDEX; }
+  inline static bool Finite(AnyID index) { return index != INVALID_INDEX && index != INFINITY_INDEX; }
+  inline static bool Invalid(AnyID index) { return index == INVALID_INDEX; }
   inline static bool Infinite(AnyID index) { return index == INFINITY_INDEX; }
   // clang-format on
 

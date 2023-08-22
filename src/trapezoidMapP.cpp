@@ -233,11 +233,7 @@ void TrapezoidMapP::Build()
 void TrapezoidMapP::Reset()
 {
   _vertices.Reset();
-  _segments.Reset();
-  _prevVertices.Reset();
-  _endVertices.Reset();
-  _prevDirVertices.Reset();
-  _endDirVertices.Reset();
+  _polygonIDs.Reset();
   ClearCache();
 }
 
@@ -248,12 +244,20 @@ void TrapezoidMapP::ClearCache()
   _lowNeighbors.clear();
   _vertexRegions.clear();
   _permutation.clear();
+  _segments.Reset();
+  _prevVertices.Reset();
+  _endVertices.Reset();
+  _prevDirVertices.Reset();
+  _endDirVertices.Reset();
 }
 
 bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)
 {
-  if (!Valid(_vertexRegions[vertexID]))
+  if (!Finite(_vertexRegions[vertexID]))
+  {
+    assert(!Infinite(_vertexRegions[vertexID]));
     return true;
+  }
 
   RegionID vertexRegion = QueryFrom(startNodeID, vertexID);
   Node &originalNode    = _nodes[_regions[vertexRegion].nodeID];
@@ -284,7 +288,7 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
 
   SegmentID splittedSegment = INVALID_INDEX;
 
-  while (Valid(segmentID))
+  while (Finite(segmentID))
   {
     int type;
     RegionID originalRegionID = GetFirstIntersectedRegion(segment.highVertex, segment.lowVertex, &type);
@@ -295,7 +299,7 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
 
     SplitRegionBySegment(originalRegionID, segmentID, type);
 
-    while (Valid(_nextRegion))
+    while (Finite(_nextRegion))
     {
       originalRegionID = _nextRegion;
       if (config.checkIntersection)
@@ -380,7 +384,7 @@ NodePair TrapezoidMapP::SplitRegionByVertex(RegionID regionID, VertexID vertexID
   for (int i = 0; i < 2; ++i)
   {
     RegionID lowNeighborID = highRegion.lowNeighbors[i];
-    if (Valid(lowNeighborID))
+    if (Finite(lowNeighborID))
     {
       Region &lowNeighbor = _regions[lowNeighborID];
       if (lowNeighbor.highNeighbors[0] == regionID)
@@ -463,7 +467,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       lowRegion.high                                            = originalRegion.high;
 
       // update _lowNeighbors
-      assert(Valid(highVertLowNei.right));
+      assert(!Invalid(highVertLowNei.right));
       highVertLowNei.mid   = highVertLowNei.right;
       highVertLowNei.right = lowRegionID;
       break;
@@ -504,7 +508,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       lowRegion.high                                          = originalRegion.high;
 
       // update _lowNeighbors
-      assert(!Valid(highVertLowNei.mid) && (highVertLowNei.left == _regions.GetIndex(&highRegion)));
+      assert(Invalid(highVertLowNei.mid) && (highVertLowNei.left == _regions.GetIndex(&highRegion)));
       highVertLowNei.right = lowRegionID;
       break;
     }
@@ -518,7 +522,7 @@ void TrapezoidMapP::UpdateAbove(Region &originalRegion,
       // update this region's neighbors
       // already INVALID_INDEX by default ->
       //      lowRegion.highNeighbors[0] = lowRegion.highNeighbors[1] = INVALID_INDEX;
-      assert(!Valid(lowRegion.highNeighbors[0]) && !Valid(lowRegion.highNeighbors[1]));
+      assert(Invalid(lowRegion.highNeighbors[0]) && Invalid(lowRegion.highNeighbors[1]));
       lowRegion.high = originalRegion.high;
 
       // update _lowNeighbors
@@ -577,7 +581,7 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
                                RegionID lowRegionID,
                                SegmentID segmentID)
 {
-  assert(Valid(segmentID) && Valid(originalRegionID) && Valid(highRegionID) && Valid(lowRegionID));
+  assert(Finite(segmentID) && Finite(originalRegionID) && Finite(highRegionID) && Finite(lowRegionID));
 
   // merging already completed before calling this.
   Region &originalRegion = _regions[originalRegionID], &highRegion = _regions[highRegionID],
@@ -635,7 +639,7 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
       highRegion.lowNeighbors[0] = highRegion.lowNeighbors[1] = oriLowVertLowNei.left;
       highRegion.low = lowRegion.low = originalRegion.low;
 
-      if (Valid(oriLowVertLowNei.right))
+      if (Finite(oriLowVertLowNei.right))
       {
         //  |...........\.....|
         //  |.added.--->.\....|
@@ -677,7 +681,7 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
   // not the last region
   else
   {
-    int res = Higher(originalRegion.low, segmentID) ? 1 : -1;
+    int res = Lefter(originalRegion.low, segmentID) ? 1 : -1;
     if (res == 1)  // to low right
     {
       // clang-format off
@@ -792,7 +796,7 @@ RegionID TrapezoidMapP::GetFirstIntersectedRegion(VertexID highVertex,
     else
     {
       // const Segment &midSegment = _segments[_regions[lowNeighbors.left].right];
-      if (Higher(refVertex, _regions[lowNeighbors.left].right))
+      if (Lefter(refVertex, _regions[lowNeighbors.left].right))
       {
         //   |------------------------*--
         //   |                       /|↖ highVertex
@@ -858,7 +862,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
   {
     bool leftDownward;
     VertexID leftHighVertexID, leftLowVertexID;
-    assert(Valid(leftSegmentID));
+    assert(Finite(leftSegmentID));
     {
       Segment &leftSegment = _segments[leftSegmentID];
       leftDownward         = leftSegment.downward;
@@ -878,7 +882,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       _segments[newLeftSubsegmentID].lowVertex = leftLowVertexID;
 
       // find left intersected region
-      RegionID leftRegionID = Valid(_lowNeighbors[leftHighVertexID].mid)
+      RegionID leftRegionID = Finite(_lowNeighbors[leftHighVertexID].mid)
                                   ? _lowNeighbors[leftHighVertexID].mid
                                   : _lowNeighbors[leftHighVertexID].left;
       {
@@ -999,7 +1003,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
   {
     bool rightDownward;
     VertexID rightHighVertexID, rightLowVertexID;
-    assert(Valid(rightSegmentID) && Valid(_regions[curRegionID].right));
+    assert(Finite(rightSegmentID) && Finite(_regions[curRegionID].right));
     {
       Segment &rightSegment = _segments[rightSegmentID];
       rightDownward         = rightSegment.downward;
@@ -1019,7 +1023,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       _segments[newRightSubsegmentID].lowVertex = rightLowVertexID;
 
       // find right intersected region
-      RegionID rightRegionID = Valid(_lowNeighbors[rightHighVertexID].mid)
+      RegionID rightRegionID = Finite(_lowNeighbors[rightHighVertexID].mid)
                                    ? _lowNeighbors[rightHighVertexID].mid
                                    : _lowNeighbors[rightHighVertexID].right;
       {
@@ -1162,13 +1166,13 @@ void TrapezoidMapP::AssignDepth()
       /* due to possible existence of intersections, its undefined to query trapezoid by segments,
          we have to query the left/right neighbor region by the low neighbors of the high vertex of the
          segment. */
-      assert(Valid(curRegion->left) && Valid(curRegion->right));
+      assert(!Invalid(curRegion->left) && !Invalid(curRegion->right));
       if (!Infinite(curRegion->left))
       {
         Segment &leftSegment = _segments[curRegion->left];
         RegionID midID       = _lowNeighbors[leftSegment.highVertex].mid;
 
-        RegionID leftNeighborID = Valid(midID) ? midID : _lowNeighbors[leftSegment.highVertex].left;
+        RegionID leftNeighborID = Finite(midID) ? midID : _lowNeighbors[leftSegment.highVertex].left;
         Region &leftNeighbor    = _regions[leftNeighborID];
         if (leftNeighbor.depth == INVALID_DEPTH)
           nextStack.push(&leftNeighbor);
@@ -1178,7 +1182,7 @@ void TrapezoidMapP::AssignDepth()
         Segment &rightSegment = _segments[curRegion->right];
         RegionID midID        = _lowNeighbors[rightSegment.highVertex].mid;
 
-        RegionID rightNeighborID = Valid(midID) ? midID : _lowNeighbors[rightSegment.highVertex].right;
+        RegionID rightNeighborID = Finite(midID) ? midID : _lowNeighbors[rightSegment.highVertex].right;
         Region &rightNeighbor    = _regions[rightNeighborID];
         if (rightNeighbor.depth == INVALID_DEPTH)
           nextStack.push(&rightNeighbor);
@@ -1188,7 +1192,7 @@ void TrapezoidMapP::AssignDepth()
       for (const auto neighborID : {curRegion->highNeighbors[0], curRegion->highNeighbors[1],
                                     curRegion->lowNeighbors[0], curRegion->lowNeighbors[1]})
       {
-        if (!Valid(neighborID) || Infinite(neighborID))
+        if (!Finite(neighborID))
           continue;
 
         Region &neighbor = _regions[neighborID];
@@ -1236,7 +1240,7 @@ bool TrapezoidMapP::Lefter(VertexID refVertexID, SegmentID segmentID) const
 {
   const Segment &segment = _segments[segmentID];
   VertexID highVertexID = segment.from(), lowVertexID = _endVertices[_endDirVertices[highVertexID]];
-  if (Higher(highVertexID, lowVertexID))
+  if (!Higher(highVertexID, lowVertexID))
     std::swap(highVertexID, lowVertexID);
 
   Vertex refVertex         = _vertices[refVertexID];

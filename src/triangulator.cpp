@@ -45,7 +45,7 @@ Mountains Triangulator::ExtractMountains() const
         leftSegmentVisited[_regions.GetIndex(curRegionPtr)] = true;
 
         RegionID nextRegionID = curRegionPtr->lowNeighbors[0];
-        if (!Valid(nextRegionID))
+        if (!Finite(nextRegionID))
           break;
         curRegionPtr = &_regions[nextRegionID];
       }
@@ -84,7 +84,7 @@ Mountains Triangulator::ExtractMountains() const
         leftSegmentVisited[_regions.GetIndex(lastRegionPtr)] = true;
 
         RegionID nextRegionID = curRegionPtr->lowNeighbors[0];
-        if (!Valid(nextRegionID))  // when the lowest region degenerates into a triangle
+        if (!Finite(nextRegionID))  // when the lowest region degenerates into a triangle
           break;
 
         curRegionPtr = &_regions[nextRegionID];
@@ -95,15 +95,15 @@ Mountains Triangulator::ExtractMountains() const
       curRegionPtr = lastRegionPtr;
       while (curRegionPtr->high != baseVertexID)
       {
-        assert(Valid(curRegionPtr->high));
-        if (!Valid(curRegionPtr->high))
+        assert(Finite(curRegionPtr->high));
+        if (!Finite(curRegionPtr->high))
           break;
 
         mountain.push_back(curRegionPtr->high);
 
         RegionID nextRegionID = curRegionPtr->highNeighbors[0];
-        assert(Valid(nextRegionID));
-        if (!Valid(nextRegionID))
+        assert(Finite(nextRegionID));
+        if (!Finite(nextRegionID))
           break;
 
         leftSegmentVisited[nextRegionID] = true;  // todo: should this be right?
@@ -147,7 +147,7 @@ Mountains Triangulator::ExtractMountains() const
         rightSegmentVisited[_regions.GetIndex(curRegionPtr)] = true;
 
         RegionID nextRegionID = curRegionPtr->lowNeighbors[1];
-        if (!Valid(nextRegionID))
+        if (!Finite(nextRegionID))
           break;
         curRegionPtr = &_regions[nextRegionID];
       }
@@ -170,7 +170,7 @@ Mountains Triangulator::ExtractMountains() const
         rightSegmentVisited[_regions.GetIndex(lastRegionPtr)] = true;
 
         RegionID nextRegionID = curRegionPtr->lowNeighbors[1];
-        if (!Valid(nextRegionID))
+        if (!Finite(nextRegionID))
           break;
 
         curRegionPtr = &_regions[nextRegionID];
@@ -180,15 +180,15 @@ Mountains Triangulator::ExtractMountains() const
       curRegionPtr = lastRegionPtr;
       while (curRegionPtr->high != baseVertexID)
       {
-        assert(Valid(curRegionPtr->high));
-        if (!Valid(curRegionPtr->high))
+        assert(Finite(curRegionPtr->high));
+        if (!Finite(curRegionPtr->high))
           break;
 
         mountain.push_back(curRegionPtr->high);
 
         RegionID nextRegionID = curRegionPtr->highNeighbors[1];
-        assert(Valid(nextRegionID));
-        if (!Valid(nextRegionID))
+        assert(Finite(nextRegionID));
+        if (!Finite(nextRegionID))
           break;
 
         rightSegmentVisited[nextRegionID] = true;
@@ -298,7 +298,7 @@ void Triangulator::TriangulateMountainProxy(const Mountains &mountains,
   {
     const auto &mountain = mountains[i].first;
     bool clockwise       = mountains[i].second;
-    if (mountain.size() < 3 )
+    if (mountain.size() < 3)
       continue;
 
     if (configTri.mountainResolutionMethod == ConfigTri::EAR_CLIPPING_NORMAL)
@@ -412,9 +412,9 @@ void Triangulator::EarClipping(const Mountain &mountain,
     // get cut this ear
     cur = current.back();
 
-    if (!Valid(prevs[cur]))
+    if (!Finite(prevs[cur]))
     {
-      assert(!Valid(nexts[cur]));
+      assert(Invalid(nexts[cur]));
       current.pop_back();
       continue;
     }
@@ -505,9 +505,9 @@ void Triangulator::EarClippingRandom(const Mountain &mountain,
     std::advance(randIt, std::rand() % current.size());
     cur = *randIt;
 
-    if (!Valid(prevs[cur]))
+    if (Invalid(prevs[cur]))
     {
-      assert(!Valid(nexts[cur]));
+      assert(Invalid(nexts[cur]));
       current.erase(randIt);
       continue;
     }
@@ -599,9 +599,9 @@ void Triangulator::EarClippingSorted(const Mountain &mountain,
     // get cut this ear
     auto [cur, angle] = current.top();
 
-    if (!Valid(prevs[cur]) || angle != angles[cur])
+    if (Invalid(prevs[cur]) || angle != angles[cur])
     {
-      assert(angle != angles[cur] || !Valid(nexts[cur]));
+      assert(angle != angles[cur] || Invalid(nexts[cur]));
       current.pop();
       continue;
     }
