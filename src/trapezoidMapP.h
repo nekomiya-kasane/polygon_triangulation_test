@@ -77,7 +77,8 @@ SEIDEL_PRIVATE:
   // clang-format on
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
-  Allocator<VertexID> _endVertices, _prevVertices, _endDirVertices, _prevDirVertices;
+  AnyID _polygonCount = 0, _vertexCount = 0;
+  Allocator<VertexID> _endVertices, _prevVertices, _endDirVertices, _prevDirVertices, _polygonIDs;
 
   /// for vertex queries
   struct VertexNeighborInfo
@@ -156,9 +157,7 @@ SEIDEL_PRIVATE:
 
   // geometric calculation
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
-  int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
-  bool Higher /* Lefter */ (VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const;
-  int Higher /* Lefter */ (const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const;
+  bool Lefter(VertexID refVertexID, SegmentID segmentID) const;
   int Intersected(VertexID segment1_Start,
                   VertexID segment1_End,
                   VertexID segment2_Start,

@@ -101,8 +101,16 @@ public:
     return static_cast<size_type>(elementPtr - _data);
   }
 
-  inline T &operator[](size_t index) { return *(_data + index); }
-  inline const T &operator[](size_t index) const { return *(_data + index); }
+  inline T &operator[](size_t index)
+  {
+    assert(index < Size());
+    return *(_data + index);
+  }
+  inline const T &operator[](size_t index) const
+  {
+    assert(index < Size());
+    return *(_data + index);
+  }
 
   inline AllocatorIterator begin() const { return _data; }
   inline AllocatorIterator end() const { return _next; }

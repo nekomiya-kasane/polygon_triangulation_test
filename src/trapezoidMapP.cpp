@@ -13,42 +13,98 @@
 
 void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 {
-  unsigned int oldSize       = _vertices.Size(),
-               incrementSize = static_cast<unsigned int>(compactPoints ? points.size() : points.size() - 1);
+  AnyID oldSize       = _vertices.Size(),
+        incrementSize = static_cast<AnyID>(compactPoints ? points.size() : points.size() - 1);
 
   _vertices.Reserve(_vertices.Size() + incrementSize);
-  _segments.Reserve(_endVertices.Size() + incrementSize);
-  _endVertices.ResizeRaw(_endVertices.Size() + incrementSize);
-  _prevVertices.ResizeRaw(_prevVertices.Size() + incrementSize);
-  _endDirVertices.ResizeRaw(_endDirVertices.Size() + incrementSize);
-  _prevDirVertices.ResizeRaw(_prevDirVertices.Size() + incrementSize);
+  _polygonIDs.ResizeRaw(_vertices.Size() + incrementSize);
 
   // todo: memcpy costs too much time for large polygon
   _vertices.Pushback(points.data(), incrementSize);
 
-  // fill ends
-  auto appendSegment = [this](VertexID from, VertexID to) {
-    bool downward = Higher(from, to);
+  for (VertexID i = oldSize; i < static_cast<VertexID>(oldSize + incrementSize); ++i)
+    _polygonIDs[i] = _polygonCount;
 
-    SegmentID segmentID = this->AppendSegment(downward);
-    Segment &segment    = _segments[segmentID];
-
-    segment.highVertex = downward ? from : to;
-    segment.lowVertex  = downward ? to : from;
-
-    _endVertices[from] = to;
-    _prevVertices[to]  = from;
-  };
-
-  for (VertexID i = oldSize; i < static_cast<VertexID>(oldSize + incrementSize - 1); ++i)
-    appendSegment(i, i + 1);
-  appendSegment(oldSize + incrementSize - 1, oldSize);
-
-  // fill far ends
+  _polygonCount += 1;
+  _vertexCount += static_cast<AnyID>(points.size());
 }
 
 void TrapezoidMapP::Build()
 {
+  // fill ends
+  _prevVertices.ResizeRaw(_vertexCount);
+  _endVertices.ResizeRaw(_vertexCount);
+  _prevDirVertices.ResizeRaw(_vertexCount);
+  _endDirVertices.ResizeRaw(_vertexCount);
+
+  for (AnyID i = 0, s = 0, e = 1; i < _polygonCount; ++i, s = e + 1, e = s + 1)
+  {
+    for (; e != _vertexCount - 1 && _polygonIDs[e + 1] == i; ++e)
+    {
+      _prevVertices[e]    = e - 1;
+      _endVertices[e]     = e + 1;
+      _prevDirVertices[e] = _endDirVertices[e] = e;
+    }
+    // last
+    _endVertices[s]     = s + 1;
+    _prevVertices[s]    = e;
+    _prevDirVertices[s] = _endDirVertices[s] = s;
+
+    _endVertices[e]     = s;
+    _prevVertices[e]    = e - 1;
+    _prevDirVertices[e] = _endDirVertices[e] = e;
+
+    /* now e is the last and s is the first vertex of current polygon */
+  }
+
+  // Compute vertical ordering for adjacent duplicate vertices
+  for (VertexID i = 0; i < _vertexCount; ++i)
+  {
+    VertexID prev = i;
+    for (VertexID j = _endVertices[i]; j != i; j = _endVertices[j])
+    {
+      if ((_vertices[j] - _vertices[i]).NormSq() == 0.f)
+      {
+        prev = j;
+        continue;
+      }
+
+      for (VertexID k = i; k != j; k = _endVertices[k])
+        _endDirVertices[k] = prev;
+
+      break;
+    }
+  }
+
+  for (VertexID i = 0; i < _vertexCount; ++i)
+  {
+    VertexID start = _endVertices[_endDirVertices[i]];
+    for (VertexID j = _endVertices[start]; j != start; j = _endVertices[j])
+    {
+      if ((_vertices[j] - _vertices[start]).NormSq() == 0.f)
+        continue;
+
+      for (VertexID k = start; k != _endDirVertices[j]; k = _endVertices[k])
+        _prevDirVertices[k] = start;
+
+      break;
+    }
+  }
+
+  // add segments
+  for (VertexID i = 0; i < _vertexCount; ++i)
+  {
+    // Edge goes from a to b
+    VertexID start = i;
+    VertexID end   = _endVertices[start];
+
+    SegmentID segmentID = AppendSegment(Higher(start, end));
+    Segment &segment    = _segments[segmentID];
+
+    segment.highVertex = segment.downward ? start : end;
+    segment.lowVertex  = segment.downward ? end : start;
+  }
+
   // generate permutation
   _permutation.reserve(_segments.Size());
   for (SegmentID i = 0, n = _segments.Size(); i < n; ++i)
@@ -202,12 +258,14 @@ bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)
   RegionID vertexRegion = QueryFrom(startNodeID, vertexID);
   Node &originalNode    = _nodes[_regions[vertexRegion].nodeID];
 
-  auto [highRegion, lowRegion] = SplitRegionByVertex(vertexRegion, vertexID);
+  auto highLowRegion = SplitRegionByVertex(vertexRegion, vertexID);
+  RegionID highRegionID, lowRegionID;
+  std::tie(highRegionID, lowRegionID) = highLowRegion;
 
   // origin cast to vertex type
   originalNode.type  = Node::VERTEX;
-  originalNode.left  = highRegion;
-  originalNode.right = lowRegion;
+  originalNode.left  = highRegionID;
+  originalNode.right = lowRegionID;
   originalNode.value = vertexID;
 
   _vertexRegions[vertexID] = INVALID_INDEX;  // invalid for already added vertex
@@ -273,9 +331,7 @@ RegionID TrapezoidMapP::QueryFrom(NodeID nodeID, VertexID vertexIDtoQuery)
     else
     {
       assert(type == Node::SEGMENT);
-      const Segment &segment = _segments[node->value];
-      node = Higher(vertexIDtoQuery, segment.highVertex, segment.lowVertex) ? &_nodes[node->left]
-                                                                            : &_nodes[node->right];
+      node = Lefter(vertexIDtoQuery, node->value) ? &_nodes[node->left] : &_nodes[node->right];
     }
     type = node->type;
   }
@@ -621,7 +677,7 @@ int TrapezoidMapP::UpdateBelow(RegionID originalRegionID,
   // not the last region
   else
   {
-    int res = Higher(originalRegion.low, segment.highVertex, segment.lowVertex) ? 1 : -1;
+    int res = Higher(originalRegion.low, segmentID) ? 1 : -1;
     if (res == 1)  // to low right
     {
       // clang-format off
@@ -735,8 +791,8 @@ RegionID TrapezoidMapP::GetFirstIntersectedRegion(VertexID highVertex,
     // occasion 2: 2 below, from middle
     else
     {
-      const Segment &midSegment = _segments[_regions[lowNeighbors.left].right];
-      if (Higher(refVertex, highVertex, midSegment.lowVertex))
+      // const Segment &midSegment = _segments[_regions[lowNeighbors.left].right];
+      if (Higher(refVertex, _regions[lowNeighbors.left].right))
       {
         //   |------------------------*--
         //   |                       /|↖ highVertex
@@ -783,6 +839,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
 {
   // CAUTION! new vertices and segments may be introduced here, any references and pointers may be
   // invalidated, only IDs are safe.
+  return INVALID_INDEX;
 
   VertexID highVertexID, lowVertexID;
   SegmentID leftSegmentID, rightSegmentID;
@@ -831,7 +888,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           RegionID leftBelowRegionID = leftRegion->lowNeighbors[1];  // right most
           Region &leftBelowRegion    = _regions[leftBelowRegionID];
 
-          if (!Infinite(leftBelowRegion.low) && Higher(_vertices[leftBelowRegion.low], intersection))
+          if (!Infinite(leftBelowRegion.low) /* && Higher(_vertices[leftBelowRegion.low], intersection)*/)
           {
             leftRegionID = leftBelowRegionID;
             leftRegion   = &leftBelowRegion;
@@ -850,7 +907,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       // resolve left regions
       {
         Region *leftRegion = &_regions[leftRegionID];
-        VertexID footVertexID;
+        // VertexID footVertexID;
         do
         {
           leftRegionID = leftRegion->lowNeighbors[1];
@@ -972,7 +1029,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           RegionID rightBelowRegionID = rightRegion->lowNeighbors[0];  // left most
           Region &rightBelowRegion    = _regions[rightBelowRegionID];
 
-          if (!Infinite(rightBelowRegion.low) && Higher(_vertices[rightBelowRegion.low], intersection))
+          if (!Infinite(rightBelowRegion.low) /* && Higher(_vertices[rightBelowRegion.low], intersection)*/)
           {
             rightRegionID = rightBelowRegionID;
             rightRegion   = &rightBelowRegion;
@@ -991,7 +1048,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
       // resolve right regions
       {
         Region *rightRegion = &_regions[rightRegionID];
-        VertexID footVertexID;
+        // VertexID footVertexID;
         do
         {
           rightRegionID = rightRegion->lowNeighbors[0];
@@ -1153,59 +1210,83 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
   const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
 
-  if (leftVertex.y > rightVertex.y)
-    return true;
-  if (leftVertex.y < rightVertex.y)
-    return false;
+  if (leftVertex.y != rightVertex.y)
+    return leftVertex.y > rightVertex.y;
 
   // same y
-  if (leftVertex.x < rightVertex.x)
-    return true;
-  if (leftVertex.x > rightVertex.x)
-    return false;
+  if (leftVertex.x != rightVertex.x)
+    return leftVertex.x < rightVertex.x;
 
   // same x, y: latter vertex always on the right, is this OK?
-  // todo: in paper, another random integer is assigned to determine this.
+  Vec2 delta               = _vertices[_endVertices[_endDirVertices[leftVertexID]]] - leftVertex;
+  VertexID endDirRefVertID = _endVertices[_endDirVertices[leftVertexID]];
+  VertexID verticesCount   = _vertices.Size();
+  if (leftVertexID < endDirRefVertID)
+    leftVertexID += verticesCount;
+  if (rightVertexID < endDirRefVertID)
+    rightVertexID += verticesCount;
+
+  if (delta.y != 0)
+    return delta.y > 0. ? leftVertexID > rightVertexID : leftVertexID < rightVertexID;
   assert(leftVertexID != rightVertexID);
-  return leftVertexID < rightVertexID;
+  return delta.x > 0. ? leftVertexID > rightVertexID : leftVertexID < rightVertexID;
 }
 
-int TrapezoidMapP::Higher(const Vertex &leftVertex, const Vertex &rightVertex) const
+bool TrapezoidMapP::Lefter(VertexID refVertexID, SegmentID segmentID) const
 {
-  if (leftVertex.y > rightVertex.y)
-    return true;
-  if (leftVertex.y < rightVertex.y)
-    return false;
+  const Segment &segment = _segments[segmentID];
+  VertexID highVertexID = segment.from(), lowVertexID = _endVertices[_endDirVertices[highVertexID]];
+  if (Higher(highVertexID, lowVertexID))
+    std::swap(highVertexID, lowVertexID);
 
-  // same y
-  if (leftVertex.x < rightVertex.x)
-    return true;
-  if (leftVertex.x > rightVertex.x)
-    return false;
+  Vertex refVertex         = _vertices[refVertexID];
+  const Vertex &highVertex = _vertices[highVertexID], &lowVertex = _vertices[lowVertexID];
 
-  return -1;  // uncertain
-}
+  // auto highLow            = highVertex - lowVertex;
+  // double cross            = highLow ^ (refVertex - lowVertex);
+  //// if (cross != 0.)
+  // return cross > 0;
 
-bool TrapezoidMapP::Higher(VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const
-{
-  const Vertex &refVertex = _vertices[refVertexID], &highVertex = _vertices[highVertexID],
-               &lowVertex = _vertices[lowVertexID];
-  auto highLow            = highVertex - lowVertex;
-  double cross            = highLow ^ (refVertex - lowVertex);
+  // return refVertexID < std::min(highVertexID, lowVertexID);
+
+  double cross = (highVertex - lowVertex) ^ (refVertex - lowVertex);
+
   if (cross != 0.)
-    return cross > 0;
+    return cross > 0.;
 
-  return refVertexID < std::min(highVertexID, lowVertexID);
-}
+  // Fix point: if the point is on and/or collinear to the edge, we need to test the top point of the query
+  // point with respect to the original edge.
+  if (_polygonIDs[segment.from()] == _polygonIDs[refVertexID])
+  {
+    // Get the next vertex along P
+    VertexID next = _endVertices[_endDirVertices[refVertexID]];
+    refVertex     = _vertices[next];
 
-int TrapezoidMapP::Higher(const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const
-{
-  auto highLow = highVertex - lowVertex;
-  double cross = highLow ^ (refVertex - lowVertex);
-  if (cross != 0.)
-    return cross > 0;
+    // Assuming edge going from S to E and P are on the same contour
+    if (_vertices[refVertexID] == _vertices[segment.from()])
+    {
+      VertexID prev = _prevVertices[_prevDirVertices[refVertexID]];
+      if (next == segment.to())
+        refVertex = _vertices[prev];
+    }
+  }
+  else
+  {
+    // Get the next vertex along P
+    VertexID next = _endVertices[_endDirVertices[refVertexID]];
+    refVertex     = _vertices[next];
 
-  return -1;
+    // Assuming edge going from S to E and P are on the same contour
+    if (_vertices[refVertexID] == _vertices[segment.to()])
+    {
+      VertexID prev = _prevVertices[_prevDirVertices[refVertexID]];
+      refVertex     = _vertices[prev];
+    }
+  }
+
+  cross = (highVertex - lowVertex) ^ (refVertex - lowVertex);
+
+  return cross > 0.f;
 }
 
 int TrapezoidMapP::Intersected(VertexID segment1_Start,
