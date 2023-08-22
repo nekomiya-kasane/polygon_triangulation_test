@@ -234,6 +234,7 @@ void TrapezoidMapP::Reset()
 {
   _vertices.Reset();
   _polygonIDs.Reset();
+  _vertexCount = _polygonCount = 0;
   ClearCache();
 }
 
