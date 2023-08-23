@@ -1,4 +1,4 @@
-#include "tes/TrapezoidMap.hpp"
+#include "plasma/TrapezoidMap.hpp"
 
 int main()
 {
