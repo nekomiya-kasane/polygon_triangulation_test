@@ -1232,6 +1232,9 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 
   if (leftShadow.x != rightShadow.x)
     return leftShadow.x < rightShadow.x;
+
+  assert(false);
+  return true;
 }
 
 bool TrapezoidMapP::Lefter(VertexID refVertexID, SegmentID segmentID) const
