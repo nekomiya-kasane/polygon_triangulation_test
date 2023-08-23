@@ -78,7 +78,7 @@ SEIDEL_PRIVATE:
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
   AnyID _polygonCount = 0, _vertexCount = 0;
-  Allocator<VertexID> _endVertices, _prevVertices, _endDirVertices, _prevDirVertices, _polygonIDs;
+  std::vector<VertexID> _endVertices, _prevVertices, _polygonIDs;
 
   /// for vertex queries
   struct VertexNeighborInfo
@@ -93,6 +93,8 @@ SEIDEL_PRIVATE:
   std::vector<VertexNeighborInfo> _lowNeighbors;
   /* Initialized to the root node. INVALID_INDEX for already added vertices. */
   std::vector<NodeID> _vertexRegions;
+  std::vector<Vec2> _shadowPoints;
+  std::vector<std::pair<double, double>> _sectors;
 
   // clang-format off
 SEIDEL_PRIVATE:
@@ -144,6 +146,7 @@ SEIDEL_PRIVATE:
   bool SplitRegionBySegment(RegionID regionID,
                             SegmentID segmentID,
                             int &type /* 0 - high, 1 - mid, 2 - low */);
+  const Vertex &GetShadowPoint(VertexID vertexID);
 
   bool UpdateAbove(Region &originalRegionID,
                    Region &highRegionID,

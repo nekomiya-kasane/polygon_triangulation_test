@@ -33,6 +33,7 @@ struct Vec2
   Vec2 operator*(double iNumber) const;
   Vec2 &operator*=(double iNumber);
   Vec2 operator/(double iNumber) const;
+  Vec2 &operator/=(double iNumber);
   Vec2 operator-() const;
   bool operator<(const Vec2 &iVec) const;
   friend bool operator==(const Vec2 &iVec1, const Vec2 &iVec2);
@@ -41,7 +42,7 @@ struct Vec2
   double Norm() const;
   Vec2 GetNormalized() const;
 
-  static const Vec2 rightTopMost, leftBottomMost;
+  static const Vec2 rightTopMost, leftBottomMost, origin;
 
   double x;
   double y;

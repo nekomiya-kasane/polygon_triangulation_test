@@ -1,7 +1,7 @@
+#include "vec2.h"
 #include <algorithm>
 #include <list>
 #include <random>
-#include "vec2.h"
 
 Vec2::Vec2(double iX, double iY) : x(iX), y(iY) {}
 
@@ -54,6 +54,13 @@ Vec2 Vec2::operator*(double iNumber) const
 Vec2 Vec2::operator/(double iNumber) const
 {
   return Vec2(x / iNumber, y / iNumber);
+}
+
+Vec2 &Vec2::operator/=(double iNumber)
+{
+  x /= iNumber;
+  y /= iNumber;
+  return *this;
 }
 
 Vec2 Vec2::operator-() const
@@ -109,3 +116,4 @@ Vec2 operator*(double iNum, const Vec2 &iVec)
 
 const Vec2 Vec2::leftBottomMost = {-MAX_DOUBLE, -MAX_DOUBLE};
 const Vec2 Vec2::rightTopMost   = {MAX_DOUBLE, MAX_DOUBLE};
+const Vec2 Vec2::origin         = {0, 0};

@@ -6,19 +6,21 @@
 #include <queue>
 #include <random>
 
+const double C_PI = 3.1415926535897932;
+
 void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 {
   AnyID oldSize       = _vertices.Size(),
         incrementSize = static_cast<AnyID>(compactPoints ? points.size() : points.size() - 1);
 
   _vertices.Reserve(_vertices.Size() + incrementSize);
-  _polygonIDs.ResizeRaw(_vertices.Size() + incrementSize);
+  _polygonIDs.reserve(_vertices.Size() + incrementSize);
 
   // todo: memcpy costs too much time for large polygon
   _vertices.Pushback(points.data(), incrementSize);
 
-  for (VertexID i = oldSize; i < static_cast<VertexID>(oldSize + incrementSize); ++i)
-    _polygonIDs[i] = _polygonCount;
+  for (VertexID i = 0; i < incrementSize; ++i)
+    _polygonIDs.push_back(_polygonCount);
 
   _polygonCount += 1;
   _vertexCount += static_cast<AnyID>(points.size());
@@ -27,63 +29,33 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 void TrapezoidMapP::Build()
 {
   // fill ends
-  _prevVertices.ResizeRaw(_vertexCount);
-  _endVertices.ResizeRaw(_vertexCount);
-  _prevDirVertices.ResizeRaw(_vertexCount);
-  _endDirVertices.ResizeRaw(_vertexCount);
+  _prevVertices.reserve(_vertexCount);
+  _endVertices.reserve(_vertexCount);
+  _shadowPoints.resize(_vertexCount);
+  _sectors.resize(_vertexCount);
 
   for (AnyID i = 0, s = 0, e = 1; i < _polygonCount; ++i, s = e + 1, e = s + 1)
   {
+    // first
+    _prevVertices.push_back(0);
+    _endVertices.push_back(0);
+
+    // middle
     for (; e != _vertexCount - 1 && _polygonIDs[e + 1] == i; ++e)
     {
-      _prevVertices[e]    = e - 1;
-      _endVertices[e]     = e + 1;
-      _prevDirVertices[e] = _endDirVertices[e] = e;
+      _prevVertices.push_back(e - 1);
+      _endVertices.push_back(e + 1);
     }
-    // last
-    _endVertices[s]     = s + 1;
-    _prevVertices[s]    = e;
-    _prevDirVertices[s] = _endDirVertices[s] = s;
 
-    _endVertices[e]     = s;
-    _prevVertices[e]    = e - 1;
-    _prevDirVertices[e] = _endDirVertices[e] = e;
+    // refresh first
+    _endVertices[s]  = s + 1;
+    _prevVertices[s] = e;
+
+    // last
+    _endVertices.push_back(s);
+    _prevVertices.push_back(e - 1);
 
     /* now e is the last and s is the first vertex of current polygon */
-  }
-
-  // Compute vertical ordering for adjacent duplicate vertices
-  for (VertexID i = 0; i < _vertexCount; ++i)
-  {
-    VertexID prev = i;
-    for (VertexID j = _endVertices[i]; j != i; j = _endVertices[j])
-    {
-      if ((_vertices[j] - _vertices[i]).NormSq() == 0.f)
-      {
-        prev = j;
-        continue;
-      }
-
-      for (VertexID k = i; k != j; k = _endVertices[k])
-        _endDirVertices[k] = prev;
-
-      break;
-    }
-  }
-
-  for (VertexID i = 0; i < _vertexCount; ++i)
-  {
-    VertexID start = _endVertices[_endDirVertices[i]];
-    for (VertexID j = _endVertices[start]; j != start; j = _endVertices[j])
-    {
-      if ((_vertices[j] - _vertices[start]).NormSq() == 0.f)
-        continue;
-
-      for (VertexID k = start; k != _endDirVertices[j]; k = _endVertices[k])
-        _prevDirVertices[k] = start;
-
-      break;
-    }
   }
 
   // add segments
@@ -228,7 +200,7 @@ void TrapezoidMapP::Build()
 void TrapezoidMapP::Reset()
 {
   _vertices.Reset();
-  _polygonIDs.Reset();
+  _polygonIDs.clear();
   _vertexCount = _polygonCount = 0;
   ClearCache();
 }
@@ -241,10 +213,10 @@ void TrapezoidMapP::ClearCache()
   _vertexRegions.clear();
   _permutation.clear();
   _segments.Reset();
-  _prevVertices.Reset();
-  _endVertices.Reset();
-  _prevDirVertices.Reset();
-  _endDirVertices.Reset();
+  _prevVertices.clear();
+  _endVertices.clear();
+  _shadowPoints.clear();
+  _sectors.clear();
 }
 
 bool TrapezoidMapP::AddVertex(VertexID vertexID, NodeID startNodeID)
@@ -342,14 +314,14 @@ RegionID TrapezoidMapP::QueryFrom(NodeID nodeID, VertexID vertexIDtoQuery)
 
 VertexID TrapezoidMapP::AppendVertex(const Vertex &vertex)
 {
-  assert(_vertices.Size() == _endVertices.Size());
-  assert(_vertices.Size() == _prevVertices.Size());
+  assert(_vertices.Size() == _endVertices.size());
+  assert(_vertices.Size() == _prevVertices.size());
   assert(_vertices.Size() == _vertexRegions.size());
 
   VertexID id = _vertices.Pushback(vertex);
 
-  _endVertices.Pushback(INVALID_INDEX);
-  _prevVertices.Pushback(INVALID_INDEX);
+  _endVertices.push_back(INVALID_INDEX);
+  _prevVertices.push_back(INVALID_INDEX);
   _vertexRegions.push_back(ROOT_NODE_ID);
   _lowNeighbors.emplace_back();
 
@@ -1212,6 +1184,17 @@ void TrapezoidMapP::AssignDepth()
   }
 }
 
+bool AngleInSector(double s, double e, double test)
+{
+  if (e < 0 && s > 0)
+  {
+    e += C_PI;
+    if (test < 0)
+      test += C_PI;
+  }
+  return (test >= s && test < e) || (test > s && test <= e);
+}
+
 bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
   const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
@@ -1219,80 +1202,54 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
   if (leftVertex.y != rightVertex.y)
     return leftVertex.y > rightVertex.y;
 
-  // same y
   if (leftVertex.x != rightVertex.x)
     return leftVertex.x < rightVertex.x;
 
-  // same x, y: latter vertex always on the right, is this OK?
-  Vec2 delta               = _vertices[_endVertices[_endDirVertices[leftVertexID]]] - leftVertex;
-  VertexID endDirRefVertID = _endVertices[_endDirVertices[leftVertexID]];
-  VertexID verticesCount   = _vertices.Size();
-  if (leftVertexID < endDirRefVertID)
-    leftVertexID += verticesCount;
-  if (rightVertexID < endDirRefVertID)
-    rightVertexID += verticesCount;
+  const Vertex &leftShadow  = const_cast<TrapezoidMapP *>(this)->GetShadowPoint(leftVertexID),
+               &rightShadow = const_cast<TrapezoidMapP *>(this)->GetShadowPoint(rightVertexID);
 
-  if (delta.y != 0)
-    return delta.y > 0. ? leftVertexID > rightVertexID : leftVertexID < rightVertexID;
-  assert(leftVertexID != rightVertexID);
-  return delta.x > 0. ? leftVertexID > rightVertexID : leftVertexID < rightVertexID;
+  auto As = _sectors[leftVertexID].first, Ae = _sectors[leftVertexID].second;
+  auto Bs = _sectors[rightVertexID].first, Be = _sectors[rightVertexID].second;
+
+  bool AInB = AngleInSector(Bs, Be, As) && AngleInSector(Bs, Be, Ae);
+  if (AInB)
+  {
+    if (leftShadow.y != 0)
+      return leftShadow.y > 0;
+    return leftShadow.x < 0;
+  }
+
+  bool BInA = AngleInSector(Bs, Be, As) && AngleInSector(Bs, Be, Ae);
+  if (BInA)
+  {
+    if (rightShadow.y != 0)
+      return rightShadow.y > 0;
+    return rightShadow.x < 0;
+  }
+
+  if (leftShadow.y != rightShadow.y)
+    return leftShadow.y > rightShadow.y;
+
+  if (leftShadow.x != rightShadow.x)
+    return leftShadow.x < rightShadow.x;
 }
 
 bool TrapezoidMapP::Lefter(VertexID refVertexID, SegmentID segmentID) const
 {
   const Segment &segment = _segments[segmentID];
-  VertexID highVertexID = segment.from(), lowVertexID = _endVertices[_endDirVertices[highVertexID]];
-  if (!Higher(highVertexID, lowVertexID))
-    std::swap(highVertexID, lowVertexID);
-
-  Vertex refVertex         = _vertices[refVertexID];
-  const Vertex &highVertex = _vertices[highVertexID], &lowVertex = _vertices[lowVertexID];
-
-  // auto highLow            = highVertex - lowVertex;
-  // double cross            = highLow ^ (refVertex - lowVertex);
-  //// if (cross != 0.)
-  // return cross > 0;
-
-  // return refVertexID < std::min(highVertexID, lowVertexID);
+  VertexID highVertexID = segment.highVertex, lowVertexID = segment.lowVertex;
+  const Vertex &highVertex = _vertices[highVertexID], &lowVertex = _vertices[lowVertexID],
+               &refVertex = _vertices[refVertexID];
 
   double cross = (highVertex - lowVertex) ^ (refVertex - lowVertex);
 
   if (cross != 0.)
     return cross > 0.;
 
-  // Fix point: if the point is on and/or collinear to the edge, we need to test the top point of the query
-  // point with respect to the original edge.
-  if (_polygonIDs[segment.from()] == _polygonIDs[refVertexID])
-  {
-    // Get the next vertex along P
-    VertexID next = _endVertices[_endDirVertices[refVertexID]];
-    refVertex     = _vertices[next];
-
-    // Assuming edge going from S to E and P are on the same contour
-    if (_vertices[refVertexID] == _vertices[segment.from()])
-    {
-      VertexID prev = _prevVertices[_prevDirVertices[refVertexID]];
-      if (next == segment.to())
-        refVertex = _vertices[prev];
-    }
-  }
-  else
-  {
-    // Get the next vertex along P
-    VertexID next = _endVertices[_endDirVertices[refVertexID]];
-    refVertex     = _vertices[next];
-
-    // Assuming edge going from S to E and P are on the same contour
-    if (_vertices[refVertexID] == _vertices[segment.to()])
-    {
-      VertexID prev = _prevVertices[_prevDirVertices[refVertexID]];
-      refVertex     = _vertices[prev];
-    }
-  }
-
-  cross = (highVertex - lowVertex) ^ (refVertex - lowVertex);
-
-  return cross > 0.f;
+  const Vertex &shadowPoint = const_cast<TrapezoidMapP *>(this)->GetShadowPoint(refVertexID);
+  cross                     = (highVertex - lowVertex) ^ (shadowPoint - lowVertex);
+  assert(cross != 0.);
+  return cross > 0.;
 }
 
 int TrapezoidMapP::Intersected(VertexID segment1_Start,
@@ -1334,4 +1291,34 @@ int TrapezoidMapP::Intersected(VertexID segment1_Start,
   intersection->y = s1.y + (t * vec1.y);
 
   return true;
+}
+
+const Vertex &TrapezoidMapP::GetShadowPoint(VertexID vertexID)
+{
+  Vertex &shadowPoint = _shadowPoints[vertexID];
+  if (shadowPoint == Vec2::origin)
+  {
+    Vec2 A = _vertices[_prevVertices[vertexID]] - _vertices[vertexID];
+    Vec2 B = _vertices[_endVertices[vertexID]] - _vertices[vertexID];
+
+    double cross = (A ^ B);
+
+    if (cross == 0.)  // collinear
+    {
+      shadowPoint.x = -B.y;
+      shadowPoint.y = -B.x;
+      shadowPoint /= shadowPoint.Norm();
+    }
+    else
+    {
+      shadowPoint = (A + B) / (A + B).Norm();
+    }
+
+    auto &sector = _sectors[vertexID];
+    sector       = std::make_pair(std::atan2(A.y, A.x), std::atan2(B.y, B.x));
+    if (cross < 0)
+      std::swap(sector.first, sector.second);
+  }
+
+  return shadowPoint;
 }
