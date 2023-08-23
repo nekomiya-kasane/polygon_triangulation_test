@@ -77,7 +77,8 @@ SEIDEL_PRIVATE:
   // clang-format on
 
   // std::unordered_map<std::pair<VertexID, VertexID>, SegmentID> _segmentMap;
-  Allocator<VertexID> _endVertices, _prevVertices;
+  AnyID _polygonCount = 0, _vertexCount = 0;
+  Allocator<VertexID> _endVertices, _prevVertices, _endDirVertices, _prevDirVertices, _polygonIDs;
 
   /// for vertex queries
   struct VertexNeighborInfo
@@ -86,7 +87,7 @@ SEIDEL_PRIVATE:
      * below, they're stored in `left` and `right` */
     RegionID left = INVALID_INDEX, mid = INVALID_INDEX, right = INVALID_INDEX;
 
-    inline int Size() const { return Valid(left) + Valid(mid) + Valid(right); }
+    inline int Size() const { return Finite(left) + Finite(mid) + Finite(right); }
   };
   /* regions right below a vertex, 3 at most for polygons */
   std::vector<VertexNeighborInfo> _lowNeighbors;
@@ -95,9 +96,9 @@ SEIDEL_PRIVATE:
 
   // clang-format off
 SEIDEL_PRIVATE:
-  inline static bool Valid(AnyID index) { return index != INVALID_INDEX; }
   inline static bool Finite(AnyID index) { return index != INVALID_INDEX && index != INFINITY_INDEX; }
-  inline static bool Ininite(AnyID index) { return index == INFINITY_INDEX; }
+  inline static bool Invalid(AnyID index) { return index == INVALID_INDEX; }
+  inline static bool Infinite(AnyID index) { return index == INFINITY_INDEX; }
   // clang-format on
 
   // memory allocating
@@ -157,9 +158,7 @@ SEIDEL_PRIVATE:
 
   // geometric calculation
   bool Higher(VertexID leftVertexID, VertexID rightVertexID) const;
-  int Higher(const Vertex &leftVertex, const Vertex &rightVertex) const;
-  bool Higher /* Lefter */ (VertexID refVertexID, VertexID highVertexID, VertexID lowVertexID) const;
-  int Higher /* Lefter */ (const Vertex &refVertex, const Vertex &highVertex, const Vertex &lowVertex) const;
+  bool Lefter(VertexID refVertexID, SegmentID segmentID) const;
   int Intersected(VertexID segment1_Start,
                   VertexID segment1_End,
                   VertexID segment2_Start,

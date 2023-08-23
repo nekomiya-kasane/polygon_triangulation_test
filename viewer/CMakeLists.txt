@@ -75,3 +75,13 @@ target_link_libraries(
   seidel_triangulator
   fist_triangulator
 )
+
+set(AAA 
+	"src/mimi.cpp"
+)
+
+add_executable(test_exe ${AAA})
+target_link_libraries(
+  test_exe PRIVATE
+  seidel_triangulator
+)

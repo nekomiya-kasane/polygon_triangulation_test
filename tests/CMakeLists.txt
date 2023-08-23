@@ -24,3 +24,5 @@ target_link_libraries(
   seidel_triangulator
   GTest::gtest_main
 )
+
+add_test(NAME static_test COMMAND seidel_triangulation_test)
