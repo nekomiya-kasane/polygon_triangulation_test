@@ -29,7 +29,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif ()
 
 add_library(seidel_triangulator STATIC)
-target_sources(seidel_triangulator PRIVATE ${SeidelSources} PUBLIC ${SeidelHeaders})
+target_sources(seidel_triangulator PRIVATE ${SeidelSources} PUBLIC ${SeidelHeaders} "src/tes/TrapezoidMap.cpp" "src/tes/TrapezoidMap.hpp" "src/tes/IndexPool.hpp")
 target_include_directories(seidel_triangulator PUBLIC "./src")
 target_compile_definitions(seidel_triangulator PUBLIC SEIDEL_USE_SIGNED_INDEX)
 if (MSVC)
