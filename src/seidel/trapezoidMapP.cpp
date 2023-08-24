@@ -263,7 +263,7 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
     Region &originalRegion    = _regions[originalRegionID];
 
     if (config.checkIntersection)
-      splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+      splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != -2, type != 2);
 
     if (!SplitRegionBySegment(originalRegionID, segmentID, type))
       return false;
@@ -273,7 +273,7 @@ bool TrapezoidMapP::AddSegment(SegmentID segmentID)
       originalRegionID = _nextRegion;
       if (config.checkIntersection)
       {
-        splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != 2, type != -2);
+        splittedSegment = ResolveIntersection(originalRegionID, segmentID, type != -2, type != 2);
       }
       if (!SplitRegionBySegment(originalRegionID, segmentID, type))
         return false;
