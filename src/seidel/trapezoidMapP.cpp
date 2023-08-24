@@ -29,10 +29,10 @@ void TrapezoidMapP::AddPolygon(const Vec2Set &points, bool compactPoints)
 void TrapezoidMapP::Build()
 {
   // fill ends
-  _prevVertices.reserve(_vertexCount);
-  _endVertices.reserve(_vertexCount);
-  _shadowPoints.resize(_vertexCount);
-  _sectors.resize(_vertexCount);
+  _prevVertices.reserve(_vertexCount * 12 / 10);
+  _endVertices.reserve(_vertexCount * 12 / 10);
+  _shadowPoints.resize(_vertexCount * 12 / 10);
+  _sectors.resize(_vertexCount * 12 / 10);
 
   for (AnyID i = 0, s = 0, e = 1; i < _polygonCount; ++i, s = e + 1, e = s + 1)
   {
@@ -817,7 +817,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
 {
   // CAUTION! new vertices and segments may be introduced here, any references and pointers may be
   // invalidated, only IDs are safe.
-  return INVALID_INDEX;
+  // return INVALID_INDEX;
 
   VertexID highVertexID, lowVertexID;
   SegmentID leftSegmentID, rightSegmentID;
@@ -1199,11 +1199,16 @@ bool TrapezoidMapP::Higher(VertexID leftVertexID, VertexID rightVertexID) const
 {
   const Vertex &leftVertex = _vertices[leftVertexID], &rightVertex = _vertices[rightVertexID];
 
+  // double dist = (leftVertex - rightVertex).Norm();
+
+  ////if (dist > config.tolerance)
+  //{
   if (leftVertex.y != rightVertex.y)
     return leftVertex.y > rightVertex.y;
 
   if (leftVertex.x != rightVertex.x)
     return leftVertex.x < rightVertex.x;
+  //}
 
   const Vertex &leftShadow  = const_cast<TrapezoidMapP *>(this)->GetShadowPoint(leftVertexID),
                &rightShadow = const_cast<TrapezoidMapP *>(this)->GetShadowPoint(rightVertexID);
@@ -1246,7 +1251,7 @@ bool TrapezoidMapP::Lefter(VertexID refVertexID, SegmentID segmentID) const
 
   double cross = (highVertex - lowVertex) ^ (refVertex - lowVertex);
 
-  if (cross != 0.)
+  if (cross != 0. /* && (std::abs(cross) / (highVertex - lowVertex).Norm()) >= config.tolerance*/)
     return cross > 0.;
 
   const Vertex &shadowPoint = const_cast<TrapezoidMapP *>(this)->GetShadowPoint(refVertexID);
