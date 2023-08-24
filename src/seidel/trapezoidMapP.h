@@ -166,7 +166,12 @@ SEIDEL_PRIVATE:
                   VertexID segment1_End,
                   VertexID segment2_Start,
                   VertexID segment2_End,
-                  Vertex *const intersection) const;
+                  Vertex *const intersection,
+                  int *type = nullptr) const;
+  bool Intersected(SegmentID segmentID,
+                   SegmentID anotherSegmentID,
+                   Vertex *const intersection,
+                   int *type = nullptr) const;
   // bool PointOnSegment();  // todo: "T" type coincidence
 };
 
