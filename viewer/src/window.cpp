@@ -677,7 +677,7 @@ int main()
              {0., 0.}, {99.9921, -1.25786},   {99.998, -0.628943}}};*/
 
   tri.config.useGivenSeed = true;
-  tri.config.seed         = -270861712;
+  tri.config.seed         = 1387768188;
 #  ifdef _DEBUG
   tri.config.incremental  = true;
   tri.config.maxSegment   = 1;
