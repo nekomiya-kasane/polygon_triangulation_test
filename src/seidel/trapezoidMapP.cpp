@@ -831,7 +831,7 @@ RegionID TrapezoidMapP::GetFirstIntersectedRegion(VertexID highVertex,
 }
 
 SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
-                                             SegmentID RSegID,
+                                             SegmentID segmentID,
                                              bool checkLeft,
                                              bool checkRight)
 {
@@ -841,28 +841,27 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
   // todo: how to handle polygonID?
 
   /* high/low vertex of the currently inserted segment */
-  VertexID RHighID, RLowID;
+
   SegmentID leftSegmentID, rightSegmentID;
-  bool RDownward;
-  {
-    Segment &RSeg  = _segments[RSegID];
-    RHighID        = RSeg.highVertex;
-    RLowID         = RSeg.lowVertex;
-    RDownward      = RSeg.downward;
-    leftSegmentID  = _regions[curRegionID].left;
-    rightSegmentID = _regions[curRegionID].right;
-  }
+  leftSegmentID  = _regions[curRegionID].left;
+  rightSegmentID = _regions[curRegionID].right;
 
   Vertex intersection;
   if (checkLeft && Finite(leftSegmentID))
   {
-    bool LDownward;
+    VertexID RHighID, RLowID, LHighID, LLowID;
+    bool LDownward, RDownward;
     /* high/low vertex of the intersected segment, with belongs to the region */
-    VertexID LHighID, LLowID;
+    SegmentID RSegID = segmentID;
     {
       Segment &leftSegment = _segments[leftSegmentID];
       LDownward            = leftSegment.downward;
       LHighID = leftSegment.highVertex, LLowID = leftSegment.lowVertex;
+
+      Segment &RSeg = _segments[RSegID];
+      RHighID       = RSeg.highVertex;
+      RLowID        = RSeg.lowVertex;
+      RDownward     = RSeg.downward;
     }
     if (LLowID != RLowID && LHighID != RHighID)
     {
@@ -929,18 +928,18 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
 
         // resolve left regions
         {
-          Region *leftRegion = &_regions[leftRegionID];
+          Region *curLeftRegion = &_regions[leftRegionID];
           // VertexID footVertexID;
           do
           {
-            RegionID /* new var on purpose */ leftRegionID = leftRegion->lowNeighbors[1];
+            RegionID /* new var on purpose */ curLeftRegionID = curLeftRegion->lowNeighbors[1];
 
             // modify right segment
-            if (Finite(leftRegionID) && (leftRegion = &_regions[leftRegionID]) &&
-                leftRegion->right == region.left)
+            if (Finite(curLeftRegionID) && (curLeftRegion = &_regions[curLeftRegionID]) &&
+                curLeftRegion->right == region.left)
             {
-              leftRegion->right = newSeg2ID;
-              leftRegionID      = leftRegionID;
+              curLeftRegion->right = newSeg2ID;
+              leftRegionID         = curLeftRegionID;
             }
             else
               break;
@@ -989,125 +988,362 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
             _endVertices[RLowID]      = newVert1ID;
             _endVertices[LLowID]      = newVert2ID;
           }
-
-          VertexNeighborInfo &LowNeis1 = _lowNeighbors[newVert1ID], &LowNeis2 = _lowNeighbors[newVert2ID];
-          assert(Invalid(LowNeis1.mid) && Invalid(LowNeis1.right));
-          assert(Invalid(LowNeis2.mid) && Invalid(LowNeis2.right));
-          LowNeis2.right = LowNeis2.left;
-          LowNeis2.left  = LowNeis1.left;
-
-          if (Higher(newVert1ID, newVert2ID))
+        }
+        else
+        {
+          if (LDownward)
           {
-            // ↘      ↙        ↘          ↙
-            //  \    .          \        .
-            //   \  .            \      .
-            //    \.      ->      \____.___
-            //    .\           ___.___.___ <- zeroRegion
-            //   .  \            .     \
-            //  .    \          .       \
-            // .      \        .         \
-
-            // maintain regions
-            zeroRegion.high = newVert1ID;
-            zeroRegion.low  = newVert2ID;
-
-            // maintain zeroRegion
-            zeroRegion.lowNeighbors[0] = LowNeis2.left;
-            zeroRegion.lowNeighbors[1] = LowNeis2.right;
-
-            zeroRegion.highNeighbors[0] = leftRegionID;
-            zeroRegion.highNeighbors[1] = curRegionID;
-
-            zeroRegion.left  = _regions[leftRegionID].left;
-            zeroRegion.right = _regions[curRegionID].right;
-
-            // maintain neighbors
-            Region &LHRegion = _regions[leftRegionID], &RHRegion = _regions[curRegionID];
-            Region &LLRegion = _regions[LowNeis2.left], &RLRegion = _regions[LowNeis2.right];
-            assert(LHRegion.lowNeighbors[0] == LHRegion.lowNeighbors[1]);
-            assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
-            LHRegion.lowNeighbors[0] = LHRegion.lowNeighbors[1] = zeroRegionID;
-            RHRegion.lowNeighbors[0] = RHRegion.lowNeighbors[1] = zeroRegionID;
-            LLRegion.highNeighbors[0] = LLRegion.highNeighbors[1] = zeroRegionID;
-            RLRegion.highNeighbors[0] = RLRegion.highNeighbors[1] = zeroRegionID;
-
-            LLRegion.right = RLRegion.left = newSeg2ID;
-            LLRegion.high = RHRegion.low = newVert1ID;
-
-            LowNeis1.left = zeroRegionID;
+            _endVertices[LHighID]     = newVert1ID;
+            _endVertices[newVert1ID]  = RHighID;
+            _endVertices[RLowID]      = newVert2ID;
+            _endVertices[newVert2ID]  = LLowID;
+            _prevVertices[newVert1ID] = LHighID;
+            _prevVertices[RHighID]    = newVert1ID;
+            _prevVertices[newVert2ID] = RLowID;
+            _prevVertices[LLowID]     = newVert2ID;
           }
           else
           {
-            // ↘      ↙        ↘         ↙
-            //  \    .          \       .
-            //   \  .            \     .
-            //    \.      ->      \___.
-            //    .\               \___\ <- zeroRegion
-            //   .  \             .     \
-            //  .    \           .       \
-            // .      \         .         \
-
-            // maintain regions
-            zeroRegion.high = newVert1ID;
-            zeroRegion.low  = newVert2ID;
-
-            // maintain zeroRegion
-            zeroRegion.lowNeighbors[0] = zeroRegion.lowNeighbors[1] = LowNeis1.left;
-            zeroRegion.highNeighbors[0] = zeroRegion.highNeighbors[1] = curRegionID;
-
-            zeroRegion.left  = LSegID;
-            zeroRegion.right = RSegID;
-
-            // maintain neighbors
-            Region &RHRegion = _regions[curRegionID], &LLRegion = _regions[LowNeis1.left],
-                   &RLRegion = _regions[LowNeis2.left];
-            assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
-            assert(LLRegion.highNeighbors[0] == LLRegion.highNeighbors[1]);
-            RHRegion.lowNeighbors[0] = LLRegion.highNeighbors[1] = zeroRegionID;
-
-            LLRegion.right = RLRegion.left = newSeg2ID;
+            _prevVertices[LHighID]    = newVert1ID;
+            _prevVertices[newVert1ID] = RHighID;
+            _prevVertices[RLowID]     = newVert2ID;
+            _prevVertices[newVert2ID] = LLowID;
+            _endVertices[newVert1ID]  = LHighID;
+            _endVertices[RHighID]     = newVert1ID;
+            _endVertices[newVert2ID]  = RLowID;
+            _endVertices[LLowID]      = newVert2ID;
           }
         }
-        // else if (!leftDownward && newSegmentDownward)
-        //{
-        //   _endVertices[leftLowVertexID]   = newVert1;
-        //   _endVertices[newVert1]          = leftHighVertexID;
-        //   _endVertices[highVertexID]      = newVert1;
-        //   _endVertices[newVert2]          = lowVertexID;
-        //   _prevVertices[lowVertexID]      = newVert2;
-        //   _prevVertices[newVert2]         = leftLowVertexID;
-        //   _prevVertices[leftHighVertexID] = newVert1;
-        //   _prevVertices[newVert1]         = highVertexID;
 
-        //  newSegment.lowVertex = newVert1;
-        //}
-        // else if (leftDownward && !newSegmentDownward)
-        //{
-        //  _endVertices[leftHighVertexID] = newVert1;
-        //  _endVertices[lowVertexID]      = newVert2;
-        //  _endVertices[newVert2]         = leftLowVertexID;
-        //  _endVertices[newVert1]         = highVertexID;
-        //  _prevVertices[newVert1]        = leftHighVertexID;
-        //  _prevVertices[newVert2]        = lowVertexID;
-        //  _prevVertices[leftLowVertexID] = newVert2;
-        //  _prevVertices[highVertexID]    = newVert1;
+        VertexNeighborInfo &LowNeis1 = _lowNeighbors[newVert1ID], &LowNeis2 = _lowNeighbors[newVert2ID];
+        assert(Invalid(LowNeis1.mid) && Invalid(LowNeis1.right));
+        assert(Invalid(LowNeis2.mid) && Invalid(LowNeis2.right));
+        LowNeis2.right = LowNeis2.left;
+        LowNeis2.left  = LowNeis1.left;
 
-        //  newSegment.lowVertex = newVert1;
-        //}
-        // else
-        //{
-        //  _endVertices[newVert1]          = leftHighVertexID;
-        //  _endVertices[newVert2]          = highVertexID;
-        //  _endVertices[lowVertexID]       = newVert2;
-        //  _endVertices[leftLowVertexID]   = newVert1;
-        //  _prevVertices[leftHighVertexID] = newVert1;
-        //  _prevVertices[newVert1]         = leftLowVertexID;
-        //  _prevVertices[highVertexID]     = newVert2;
-        //  _prevVertices[newVert2]         = lowVertexID;
+        if (Higher(newVert1ID, newVert2ID))
+        {
+          // ↘      ↙        ↘          ↙
+          //  \    .          \        .
+          //   \  .            \      .
+          //    \.      ->      \____.___
+          //    .\           ___.___.___ <- zeroRegion
+          //   .  \            .     \
+          //  .    \          .       \
+          // .      \        .         \
 
-        //  newSegment.lowVertex = newVert2;
-        //}
+          // maintain regions
+          zeroRegion.high = newVert1ID;
+          zeroRegion.low  = newVert2ID;
+
+          // maintain zeroRegion
+          zeroRegion.lowNeighbors[0] = LowNeis2.left;
+          zeroRegion.lowNeighbors[1] = LowNeis2.right;
+
+          zeroRegion.highNeighbors[0] = leftRegionID;
+          zeroRegion.highNeighbors[1] = curRegionID;
+
+          zeroRegion.left  = _regions[leftRegionID].left;
+          zeroRegion.right = _regions[curRegionID].right;
+
+          // maintain neighbors
+          Region &LHRegion = _regions[leftRegionID], &RHRegion = _regions[curRegionID];
+          Region &LLRegion = _regions[LowNeis2.left], &RLRegion = _regions[LowNeis2.right];
+          assert(LHRegion.lowNeighbors[0] == LHRegion.lowNeighbors[1]);
+          assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
+          LHRegion.lowNeighbors[0] = LHRegion.lowNeighbors[1] = zeroRegionID;
+          RHRegion.lowNeighbors[0] = RHRegion.lowNeighbors[1] = zeroRegionID;
+          LLRegion.highNeighbors[0] = LLRegion.highNeighbors[1] = zeroRegionID;
+          RLRegion.highNeighbors[0] = RLRegion.highNeighbors[1] = zeroRegionID;
+
+          LLRegion.right = RLRegion.left = newSeg2ID;
+          LLRegion.high = RHRegion.low = newVert1ID;
+
+          LowNeis1.left = zeroRegionID;
+        }
+        else
+        {
+          // ↘      ↙        ↘         ↙
+          //  \    .          \       .
+          //   \  .            \     .
+          //    \.      ->      \___.
+          //    .\               \___\ <- zeroRegion
+          //   .  \             .     \
+          //  .    \           .       \
+          // .      \         .         \
+
+          // maintain regions
+          zeroRegion.high = newVert1ID;
+          zeroRegion.low  = newVert2ID;
+
+          // maintain zeroRegion
+          zeroRegion.lowNeighbors[0] = zeroRegion.lowNeighbors[1] = LowNeis1.left;
+          zeroRegion.highNeighbors[0] = zeroRegion.highNeighbors[1] = curRegionID;
+
+          zeroRegion.left  = LSegID;
+          zeroRegion.right = RSegID;
+
+          // maintain neighbors
+          Region &RHRegion = _regions[curRegionID], &LLRegion = _regions[LowNeis1.left],
+                 &RLRegion = _regions[LowNeis2.left];
+          assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
+          assert(LLRegion.highNeighbors[0] == LLRegion.highNeighbors[1]);
+          RHRegion.lowNeighbors[0] = LLRegion.highNeighbors[1] = zeroRegionID;
+
+          LLRegion.right = RLRegion.left = newSeg2ID;
+        }
         return newSeg1ID;
+      }
+    }
+  }
+
+  if (checkRight && Finite(rightSegmentID))
+  {
+    VertexID RHighID, RLowID, LHighID, LLowID;
+    bool LDownward, RDownward;
+    /* high/low vertex of the intersected segment, with belongs to the region */
+    SegmentID LSegID = segmentID, RSegID = rightSegmentID;
+    {
+      Segment &rightSegment = _segments[RSegID];
+      RDownward             = rightSegment.downward;
+      RHighID = rightSegment.highVertex, RLowID = rightSegment.lowVertex;
+
+      Segment &LSeg = _segments[LSegID];
+      LHighID       = LSeg.highVertex;
+      LLowID        = LSeg.lowVertex;
+      LDownward     = LSeg.downward;
+    }
+    if (LLowID != RLowID && LHighID != RHighID)
+    {
+      int intersectionType = Intersected(LSegID, rightSegmentID, &intersection);
+      if (intersectionType == 2)
+      {
+        // todo: intersected at the end point
+      }
+      else if (intersectionType == 1)
+      {
+        // split vertices
+        VertexID newVert1ID = AppendVertex(intersection), newVert2ID = AppendVertex(intersection);
+        SegmentID newSeg1ID = AppendSegment(RDownward), newSeg2ID = AppendSegment(LDownward);
+
+        /*        ↘             ↙                                ↖          ↙
+                   \          //                                  \       //
+                  L \        // R                                L \     // R
+                     \      //                                      \   //
+                      \    //                                        \_//
+                 vert1 \  // vert2               or             vert1  vert2
+                       //  \                                        //-\
+                      //    \                                      //    \
+            newSeg1  //      \ newSeg2                   newSeg1  //      \ newSeg2
+                    //        \                                  //        \
+                   //          \                                //          \
+                  ↙             ↘                              ↙             ↖
+        */
+
+        _segments[newSeg1ID].highVertex = (LDownward == RDownward) ? newVert1ID : newVert2ID;
+        _segments[newSeg1ID].lowVertex  = RLowID;
+        _segments[newSeg2ID].highVertex = (LDownward == RDownward) ? newVert2ID : newVert1ID;
+        _segments[newSeg2ID].lowVertex  = LLowID;
+        _segments[LSegID].lowVertex     = newVert1ID;
+        _segments[RSegID].lowVertex     = newVert2ID;
+
+        // find left intersected region
+        RegionID zeroRegionID, rightRegionID = Finite(_lowNeighbors[RHighID].mid)
+                                                   ? _lowNeighbors[RHighID].mid
+                                                   : _lowNeighbors[RHighID].right;
+        {
+          const Region *rightRegion = &_regions[rightRegionID];
+          while (true)
+          {
+            const RegionID rightBelowRegionID = rightRegion->lowNeighbors[0];  // left most
+            const Region &rightBelowRegion    = _regions[rightBelowRegionID];
+
+            if (!Infinite(rightBelowRegion.low) && Higher(rightBelowRegion.low, newVert2ID))
+            {
+              rightRegionID = rightBelowRegionID;
+              rightRegion   = &rightBelowRegion;
+              continue;
+            }
+            break;
+          }
+
+          AddVertex(newVert1ID, _regions[curRegionID].nodeID);
+          AddVertex(newVert2ID, rightRegion->nodeID);
+        }
+
+        Region &zeroRegion = NewRegion();
+        zeroRegionID       = _regions.GetIndex(&zeroRegion);
+        Region &leftRegion = _regions[curRegionID];
+
+        // resolve right regions
+        {
+          Region *curRightRegion = &_regions[rightRegionID];
+          // VertexID footVertexID;
+          do
+          {
+            RegionID /* new var on purpose */ curRightRegionID = curRightRegion->lowNeighbors[0];
+
+            // modify right segment
+            if (Finite(curRightRegionID) && (curRightRegion = &_regions[curRightRegionID]) &&
+                curRightRegion->left == leftRegion.right)
+            {
+              curRightRegion->left = newSeg1ID;
+              rightRegionID        = curRightRegionID;
+            }
+            else
+              break;
+          } while (true);
+        }
+
+        // resolve left regions
+        {
+          Region *curLeftRegion    = &leftRegion;
+          RegionID curLeftRegionID = curRegionID;
+          do
+          {
+            curLeftRegionID = curLeftRegion->lowNeighbors[1];
+
+            // modify right segment
+            if (Finite(curLeftRegionID) && (curLeftRegion = &_regions[curLeftRegionID]) &&
+                curLeftRegion->right == leftRegion.right)
+              curLeftRegion->right = newSeg1ID;
+            else
+              break;
+          } while (true);
+        }
+
+        // resolve segments
+        if (LDownward == RDownward)
+        {
+          if (LDownward)
+          {
+            _endVertices[LHighID]     = newVert1ID;
+            _endVertices[RHighID]     = newVert2ID;
+            _endVertices[newVert1ID]  = RLowID;
+            _endVertices[newVert2ID]  = LLowID;
+            _prevVertices[newVert1ID] = LHighID;
+            _prevVertices[newVert2ID] = RHighID;
+            _prevVertices[RLowID]     = newVert1ID;
+            _prevVertices[LLowID]     = newVert2ID;
+          }
+          else
+          {
+            _prevVertices[LHighID]    = newVert1ID;
+            _prevVertices[RHighID]    = newVert2ID;
+            _prevVertices[newVert1ID] = RLowID;
+            _prevVertices[newVert2ID] = LLowID;
+            _endVertices[newVert1ID]  = LHighID;
+            _endVertices[newVert2ID]  = RHighID;
+            _endVertices[RLowID]      = newVert1ID;
+            _endVertices[LLowID]      = newVert2ID;
+          }
+        }
+        else
+        {
+          if (LDownward)
+          {
+            _endVertices[LHighID]     = newVert1ID;
+            _endVertices[newVert1ID]  = RHighID;
+            _endVertices[RLowID]      = newVert2ID;
+            _endVertices[newVert2ID]  = LLowID;
+            _prevVertices[newVert1ID] = LHighID;
+            _prevVertices[RHighID]    = newVert1ID;
+            _prevVertices[newVert2ID] = RLowID;
+            _prevVertices[LLowID]     = newVert2ID;
+          }
+          else
+          {
+            _prevVertices[LHighID]    = newVert1ID;
+            _prevVertices[newVert1ID] = RHighID;
+            _prevVertices[RLowID]     = newVert2ID;
+            _prevVertices[newVert2ID] = LLowID;
+            _endVertices[newVert1ID]  = LHighID;
+            _endVertices[RHighID]     = newVert1ID;
+            _endVertices[newVert2ID]  = RLowID;
+            _endVertices[LLowID]      = newVert2ID;
+          }
+        }
+
+        VertexNeighborInfo &LowNeis1 = _lowNeighbors[newVert1ID], &LowNeis2 = _lowNeighbors[newVert2ID];
+        assert(Invalid(LowNeis1.mid) && Invalid(LowNeis1.right));
+        assert(Invalid(LowNeis2.mid) && Invalid(LowNeis2.right));
+        LowNeis1.right = zeroRegionID;
+
+        if (Higher(newVert1ID, newVert2ID))
+        {
+          // ↘      ↙        ↘          ↙
+          //  .    /          .        /
+          //   .  /            .      /
+          //    ./      ->      .____/
+          //    /.              /___/ <- zeroRegion
+          //   /  .            /     .
+          //  /    .          /       .
+          // /      .        /         .
+
+          // maintain regions
+          zeroRegion.high = newVert1ID;
+          zeroRegion.low  = newVert2ID;
+
+          // maintain zeroRegion
+          zeroRegion.lowNeighbors[0] = zeroRegion.lowNeighbors[1] = LowNeis2.left;
+          zeroRegion.highNeighbors[0] = zeroRegion.highNeighbors[1] = curRegionID;
+
+          zeroRegion.left  = newSeg1ID;
+          zeroRegion.right = RSegID;
+
+          // maintain neighbors
+          Region &LHRegion = _regions[curRegionID], &RHRegion = _regions[rightRegionID];
+          Region &LLRegion = _regions[LowNeis1.left], &RLRegion = _regions[LowNeis2.left];
+          assert(LLRegion.highNeighbors[0] == LLRegion.highNeighbors[1]);
+          assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
+          LHRegion.lowNeighbors[1]  = zeroRegionID;
+          RLRegion.highNeighbors[0] = zeroRegionID;
+
+          LLRegion.right = RLRegion.left = newSeg1ID;
+
+          LowNeis1.right = zeroRegionID;
+        }
+        else
+        {
+          // ↘      ↙       ↘          ↙
+          //  .    /         .        /
+          //   .  /           .      /
+          //    ./      ->     .____/
+          //    /.           ___.___._____ <- zeroRegion
+          //   /  .            /     .
+          //  /    .          /       .
+          // /      .        /         .
+
+          // maintain regions
+          zeroRegion.high = newVert2ID;
+          zeroRegion.low  = newVert1ID;
+
+          // maintain zeroRegion
+          zeroRegion.lowNeighbors[0] = LowNeis1.left;
+          zeroRegion.lowNeighbors[1] = LowNeis1.right;
+
+          zeroRegion.highNeighbors[0] = curRegionID;
+          zeroRegion.highNeighbors[1] = rightRegionID;
+
+          zeroRegion.left  = _regions[curRegionID].left;
+          zeroRegion.right = _regions[rightRegionID].right;
+
+          // maintain neighbors
+          Region &LHRegion = _regions[curRegionID], &RHRegion = _regions[rightRegionID];
+          Region &LLRegion = _regions[LowNeis1.left], &RLRegion = _regions[LowNeis1.left];
+          assert(LHRegion.lowNeighbors[0] == LHRegion.lowNeighbors[1]);
+          assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
+          LHRegion.lowNeighbors[0] = LHRegion.lowNeighbors[1] = zeroRegionID;
+          RHRegion.lowNeighbors[0] = RHRegion.lowNeighbors[1] = zeroRegionID;
+          LLRegion.highNeighbors[0] = LLRegion.highNeighbors[1] = zeroRegionID;
+          RLRegion.highNeighbors[0] = RLRegion.highNeighbors[1] = zeroRegionID;
+
+          LLRegion.right = RLRegion.left = newSeg1ID;
+          LHRegion.low = RLRegion.high = newVert1ID;
+
+          LowNeis2.left = zeroRegionID;
+        }
+        return newSeg2ID;
       }
     }
   }
