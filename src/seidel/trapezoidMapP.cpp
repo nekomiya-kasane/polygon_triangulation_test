@@ -893,10 +893,10 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
 
         _segments[newSeg1ID].highVertex = (LDownward == RDownward) ? newVert1ID : newVert2ID;
         _segments[newSeg1ID].lowVertex  = RLowID;
-        _segments[newSeg2ID].highVertex = (LDownward == RDownward) ? newVert2ID : newVert1ID;
+        _segments[newSeg2ID].highVertex = newVert2ID;
         _segments[newSeg2ID].lowVertex  = LLowID;
         _segments[LSegID].lowVertex     = newVert1ID;
-        _segments[RSegID].lowVertex     = newVert2ID;
+        _segments[RSegID].lowVertex     = (LDownward == RDownward) ? newVert2ID : newVert1ID;
 
         // find left intersected region
         RegionID zeroRegionID, leftRegionID = Finite(_lowNeighbors[LHighID].mid)
@@ -909,13 +909,33 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
             RegionID leftBelowRegionID = leftRegion->lowNeighbors[1];  // right most
             Region &leftBelowRegion    = _regions[leftBelowRegionID];
 
-            if (!Infinite(leftBelowRegion.low) && Higher(leftBelowRegion.low, newVert1ID))
+            if (!Infinite(leftBelowRegion.low) && Higher(leftRegion->low, newVert1ID))
             {
               leftRegionID = leftBelowRegionID;
               leftRegion   = &leftBelowRegion;
               continue;
             }
             break;
+          }
+
+          // todo: improve this
+          if (leftRegionID == curRegionID)
+          {
+            leftRegionID = _lowNeighbors[LHighID].left;
+            leftRegion   = &_regions[leftRegionID];
+            while (true)
+            {
+              RegionID leftBelowRegionID = leftRegion->lowNeighbors[1];  // right most
+              Region &leftBelowRegion    = _regions[leftBelowRegionID];
+
+              if (!Infinite(leftBelowRegion.low) && Higher(leftRegion->low, newVert1ID))
+              {
+                leftRegionID = leftBelowRegionID;
+                leftRegion   = &leftBelowRegion;
+                continue;
+              }
+              break;
+            }
           }
 
           AddVertex(newVert1ID, leftRegion->nodeID);
@@ -929,18 +949,14 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         // resolve left regions
         {
           Region *curLeftRegion = &_regions[leftRegionID];
-          // VertexID footVertexID;
           do
           {
-            RegionID /* new var on purpose */ curLeftRegionID = curLeftRegion->lowNeighbors[1];
+            RegionID /* new var on purpose */ nextLeftRegionID = curLeftRegion->lowNeighbors[1];
 
             // modify right segment
-            if (Finite(curLeftRegionID) && (curLeftRegion = &_regions[curLeftRegionID]) &&
+            if (Finite(nextLeftRegionID) && (curLeftRegion = &_regions[nextLeftRegionID]) &&
                 curLeftRegion->right == region.left)
-            {
               curLeftRegion->right = newSeg2ID;
-              leftRegionID         = curLeftRegionID;
-            }
             else
               break;
           } while (true);
@@ -1057,8 +1073,9 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           RLRegion.highNeighbors[0] = RLRegion.highNeighbors[1] = zeroRegionID;
 
           LLRegion.right = RLRegion.left = newSeg2ID;
-          LLRegion.high = RHRegion.low = newVert1ID;
 
+          LLRegion.high = newVert2ID;
+          RHRegion.low  = newVert1ID;
           LowNeis1.left = zeroRegionID;
         }
         else
@@ -1142,10 +1159,10 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
 
         _segments[newSeg1ID].highVertex = (LDownward == RDownward) ? newVert1ID : newVert2ID;
         _segments[newSeg1ID].lowVertex  = RLowID;
-        _segments[newSeg2ID].highVertex = (LDownward == RDownward) ? newVert2ID : newVert1ID;
+        _segments[newSeg2ID].highVertex = newVert2ID;
         _segments[newSeg2ID].lowVertex  = LLowID;
         _segments[LSegID].lowVertex     = newVert1ID;
-        _segments[RSegID].lowVertex     = newVert2ID;
+        _segments[RSegID].lowVertex     = (LDownward == RDownward) ? newVert2ID : newVert1ID;
 
         // find left intersected region
         RegionID zeroRegionID, rightRegionID = Finite(_lowNeighbors[RHighID].mid)
@@ -1158,13 +1175,33 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
             const RegionID rightBelowRegionID = rightRegion->lowNeighbors[0];  // left most
             const Region &rightBelowRegion    = _regions[rightBelowRegionID];
 
-            if (!Infinite(rightBelowRegion.low) && Higher(rightBelowRegion.low, newVert2ID))
+            if (!Infinite(rightBelowRegion.low) && Higher(rightRegion->low, newVert2ID))
             {
               rightRegionID = rightBelowRegionID;
               rightRegion   = &rightBelowRegion;
               continue;
             }
             break;
+          }
+
+          // todo: improve this
+          if (rightRegionID == curRegionID)
+          {
+            rightRegionID = _lowNeighbors[LHighID].right;
+            rightRegion   = &_regions[rightRegionID];
+            while (true)
+            {
+              RegionID rightBelowRegionID = rightRegion->lowNeighbors[1];  // right most
+              Region &rightBelowRegion    = _regions[rightBelowRegionID];
+
+              if (!Infinite(rightBelowRegion.low) && Higher(rightRegion->low, newVert2ID))
+              {
+                rightRegionID = rightBelowRegionID;
+                rightRegion   = &rightBelowRegion;
+                continue;
+              }
+              break;
+            }
           }
 
           AddVertex(newVert1ID, _regions[curRegionID].nodeID);
@@ -1186,10 +1223,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
             // modify right segment
             if (Finite(curRightRegionID) && (curRightRegion = &_regions[curRightRegionID]) &&
                 curRightRegion->left == leftRegion.right)
-            {
               curRightRegion->left = newSeg1ID;
-              rightRegionID        = curRightRegionID;
-            }
             else
               break;
           } while (true);
