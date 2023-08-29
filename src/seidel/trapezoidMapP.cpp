@@ -1048,25 +1048,29 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           //  .    \          .       \
           // .      \        .         \
 
+          RegionID LHRegionID = leftRegionID, RHRegionID = curRegionID;
+          Region &LHRegion = _regions[leftRegionID], &RHRegion = _regions[curRegionID];
+          RegionID LLRegionID = LHRegion.lowNeighbors[1], RLRegionID = RHRegion.lowNeighbors[0];
+          Region &LLRegion = _regions[LLRegionID], &RLRegion = _regions[RLRegionID];
+          assert(LHRegion.lowNeighbors[0] == LHRegion.lowNeighbors[1]);
+          assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
+
           // maintain regions
           zeroRegion.high = newVert1ID;
           zeroRegion.low  = newVert2ID;
 
           // maintain zeroRegion
-          zeroRegion.lowNeighbors[0] = LowNeis2.left;
-          zeroRegion.lowNeighbors[1] = LowNeis2.right;
+          zeroRegion.lowNeighbors[0] = LLRegionID;
+          zeroRegion.lowNeighbors[1] = RLRegionID;
 
-          zeroRegion.highNeighbors[0] = leftRegionID;
-          zeroRegion.highNeighbors[1] = curRegionID;
+          zeroRegion.highNeighbors[0] = LHRegionID;
+          zeroRegion.highNeighbors[1] = RHRegionID;
 
-          zeroRegion.left  = _regions[leftRegionID].left;
-          zeroRegion.right = _regions[curRegionID].right;
+          zeroRegion.left  = _regions[LHRegionID].left;
+          zeroRegion.right = _regions[RHRegionID].right;
 
           // maintain neighbors
-          Region &LHRegion = _regions[leftRegionID], &RHRegion = _regions[curRegionID];
-          Region &LLRegion = _regions[LowNeis2.left], &RLRegion = _regions[LowNeis2.right];
-          assert(LHRegion.lowNeighbors[0] == LHRegion.lowNeighbors[1]);
-          assert(RHRegion.lowNeighbors[0] == RHRegion.lowNeighbors[1]);
+
           LHRegion.lowNeighbors[0] = LHRegion.lowNeighbors[1] = zeroRegionID;
           RHRegion.lowNeighbors[0] = RHRegion.lowNeighbors[1] = zeroRegionID;
           LLRegion.highNeighbors[0] = LLRegion.highNeighbors[1] = zeroRegionID;
@@ -1079,7 +1083,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
 
           LowNeis1.left  = zeroRegionID;
           LowNeis2.right = LowNeis2.left;
-          LowNeis2.left  = LowNeis1.left;
+          LowNeis2.left  = LLRegionID;
         }
         else
         {
