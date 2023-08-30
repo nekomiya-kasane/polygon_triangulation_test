@@ -899,9 +899,23 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         _segments[RSegID].lowVertex     = (LDownward == RDownward) ? newVert2ID : newVert1ID;
 
         // find left intersected region
-        RegionID zeroRegionID, leftRegionID = Finite(_lowNeighbors[LHighID].mid)
-                                                  ? _lowNeighbors[LHighID].mid
-                                                  : _lowNeighbors[LHighID].left;
+        RegionID zeroRegionID, leftRegionID;
+        {
+          RegionID _leftRegionID    = _lowNeighbors[LHighID].left;
+          const Region &_leftRegion = _regions[_leftRegionID];
+          if (_leftRegion.right == leftSegmentID)
+          {
+            leftRegionID = _leftRegionID;
+          }
+          else
+          {
+            RegionID _rightRegionID    = _lowNeighbors[LHighID].right;
+            const Region &_rightRegion = _regions[_rightRegionID];
+            leftRegionID               = _rightRegion.left;
+
+            assert(leftSegmentID == _rightRegion.left);
+          }
+        }
         {
           Region *leftRegion = &_regions[leftRegionID];
           while (true)
@@ -916,26 +930,6 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
               continue;
             }
             break;
-          }
-
-          // todo: improve this
-          if (leftRegionID == curRegionID)
-          {
-            leftRegionID = _lowNeighbors[LHighID].left;
-            leftRegion   = &_regions[leftRegionID];
-            while (true)
-            {
-              RegionID leftBelowRegionID = leftRegion->lowNeighbors[1];  // right most
-              Region &leftBelowRegion    = _regions[leftBelowRegionID];
-
-              if (!Infinite(leftBelowRegion.low) && Higher(leftRegion->low, newVert1ID))
-              {
-                leftRegionID = leftBelowRegionID;
-                leftRegion   = &leftBelowRegion;
-                continue;
-              }
-              break;
-            }
           }
 
           AddVertex(newVert1ID, leftRegion->nodeID);
@@ -1176,9 +1170,25 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         _segments[RSegID].lowVertex     = (LDownward == RDownward) ? newVert2ID : newVert1ID;
 
         // find left intersected region
-        RegionID zeroRegionID, rightRegionID = Finite(_lowNeighbors[RHighID].mid)
-                                                   ? _lowNeighbors[RHighID].mid
-                                                   : _lowNeighbors[RHighID].right;
+
+        // find left intersected region
+        RegionID zeroRegionID, rightRegionID;
+        {
+          RegionID _leftRegionID    = _lowNeighbors[RHighID].left;
+          const Region &_leftRegion = _regions[_leftRegionID];
+          if (_leftRegion.right == rightSegmentID)
+          {
+            rightRegionID = _leftRegionID;
+          }
+          else
+          {
+            RegionID _rightRegionID    = _lowNeighbors[RHighID].right;
+            const Region &_rightRegion = _regions[_rightRegionID];
+            rightRegionID              = _rightRegion.left;
+
+            assert(rightSegmentID == _rightRegion.left);
+          }
+        }
         {
           const Region *rightRegion = &_regions[rightRegionID];
           while (true)
@@ -1198,7 +1208,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           // todo: improve this
           if (rightRegionID == curRegionID)
           {
-            rightRegionID = _lowNeighbors[LHighID].right;
+            rightRegionID = _lowNeighbors[RHighID].right;
             rightRegion   = &_regions[rightRegionID];
             while (true)
             {
@@ -1601,7 +1611,7 @@ bool TrapezoidMapP::Lefter(VertexID refVertexID, SegmentID segmentID) const
     return cross > 0.;
 
   const Vertex &shadowPoint = const_cast<TrapezoidMapP *>(this)->GetShadowPoint(refVertexID);
-  cross                     = (highVertex - lowVertex) ^ (shadowPoint - lowVertex);
+  cross                     = (highVertex - lowVertex) ^ shadowPoint;
   assert(cross != 0.);
   return cross > 0.;
 }
