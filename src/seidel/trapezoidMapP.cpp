@@ -110,8 +110,8 @@ void TrapezoidMapP::Build()
 #endif
 
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
-  _nodes.Reserve(_vertices.Size() * 5 + _segments.Size() * 5 + 60);
-  _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 60);
+  _nodes.Reserve(_vertices.Size() * 5 + _segments.Size() * 5 + 1200);
+  _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 1200);
   _lowNeighbors.resize(_vertices.Size());
 
   // root
