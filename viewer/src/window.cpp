@@ -185,7 +185,7 @@ bool ResolveConfig(Triangulator &tri)
   if (tri.config.incremental)
   {
     tri.config.assignDepth = tri.config.generateMountains = tri.config.triangulation = false;
-    tri.config.maxSegment = GuiSliderBar(RealRect(10, 160, 100, 20), NULL, " Segments", tri.config.maxSegment,
+    tri.config.maxSegment = GuiSliderBar(RealRect(10, 160, 300, 20), NULL, " Segments", tri.config.maxSegment,
                                          0, tri._segments.Size());
     DrawText(std::to_string(tri.config.maxSegment).c_str(), 175, 133, 14, GRAY);
   }
@@ -321,6 +321,7 @@ int main()
   points = {{{-1, -1}, {-1, 0.5}, {1, -0.5}, {1, 1}}};
   points = {{{-1, 1}, {-1, 0.5}, {1, -0.5}, {1, -1}}};
   points = {{{-4.5, 4.5}, {5.5, 7}, {-1.8, -1.8}, {0.5, 8.5}, {5.72, -1.8}}};
+  points = {{{9, 4}, {4, -1}, {-1, 2}, {10, 1}, {2, 2}, {-1, 0}}};
 
   // std::reverse(points[0].begin(), points[0].end());
   //   tri.configTri.multithreading = true;
@@ -684,7 +685,7 @@ int main()
   tri.config.seed         = 610824340;
 #  ifdef _DEBUG
   tri.config.incremental  = true;
-  tri.config.maxSegment   = 1;
+  tri.config.maxSegment   = 4;
 #  endif
 
   // visualization

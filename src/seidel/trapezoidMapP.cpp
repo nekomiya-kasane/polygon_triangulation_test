@@ -848,6 +848,9 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
   leftSegmentID  = _regions[curRegionID].left;
   rightSegmentID = _regions[curRegionID].right;
 
+  const Vertex &highVertex = _vertices[_regions[curRegionID].high],
+               &lowVertex  = _vertices[_regions[curRegionID].low];
+
   Vertex intersection;
   if (checkLeft && Finite(leftSegmentID))
   {
@@ -868,6 +871,9 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
     if (LLowID != RLowID && LHighID != RHighID)
     {
       int intersectionType = Intersected(RSegID, leftSegmentID, &intersection);
+      if (intersectionType && (intersection.y > highVertex.y || intersection.y < lowVertex.y))
+        intersectionType = 0;
+
       if (intersectionType == 2)
       {
         // todo: intersected at the end point
@@ -920,9 +926,12 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           while (true)
           {
             RegionID leftBelowRegionID = leftRegion->lowNeighbors[1];  // right most
-            Region &leftBelowRegion    = _regions[leftBelowRegionID];
+            if (!Finite(leftBelowRegionID))
+              break;
 
-            if (!Infinite(leftBelowRegion.low) && Higher(leftRegion->low, newVert1ID))
+            Region &leftBelowRegion = _regions[leftBelowRegionID];
+
+            if (Finite(leftBelowRegion.low) && Higher(leftRegion->low, newVert1ID))
             {
               leftRegionID = leftBelowRegionID;
               leftRegion   = &leftBelowRegion;
@@ -1137,6 +1146,9 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
     if (LLowID != RLowID && LHighID != RHighID)
     {
       int intersectionType = Intersected(LSegID, rightSegmentID, &intersection);
+      if (intersectionType && (intersection.y > highVertex.y || intersection.y < lowVertex.y))
+        intersectionType = 0;
+
       if (intersectionType == 2)
       {
         // todo: intersected at the end point
@@ -1188,9 +1200,11 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           while (true)
           {
             const RegionID rightBelowRegionID = rightRegion->lowNeighbors[0];  // left most
-            const Region &rightBelowRegion    = _regions[rightBelowRegionID];
+            if (!Finite(rightBelowRegionID))
+              break;
+            const Region &rightBelowRegion = _regions[rightBelowRegionID];
 
-            if (!Infinite(rightBelowRegion.low) && Higher(rightRegion->low, newVert2ID))
+            if (Finite(rightBelowRegion.low) && Higher(rightRegion->low, newVert2ID))
             {
               rightRegionID = rightBelowRegionID;
               rightRegion   = &rightBelowRegion;
