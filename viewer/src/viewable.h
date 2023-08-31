@@ -51,9 +51,9 @@ public:
 
   struct
   {
-    VertexID curVertexID   = INVALID_INDEX;
-    SegmentID curSegmentID = INVALID_INDEX;
-    RegionID curRegionID   = INVALID_INDEX;
+    std::vector<VertexID> curVertexIDs   = {};
+    std::vector<SegmentID> curSegmentIDs = {};
+    std::vector<RegionID> curRegionIDs   = {};
   } indicators;
 
   struct

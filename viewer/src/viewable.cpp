@@ -195,7 +195,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       // indicator
       if (std::abs(_focus.x - x(vertex.x)) <= drawingConfig.vertexRadius &&
           std::abs(_focus.y - y(vertex.y)) <= drawingConfig.vertexRadius)
-        indicators.curVertexID = _vertices.GetIndex(&vertex);
+        indicators.curVertexIDs.push_back(_vertices.GetIndex(&vertex));
 
       // draw points
       DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius / _zoom, overrideColor ? color : RED);
@@ -279,7 +279,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
         // assert(right - left > -10);  // strange
         if (_focus.x >= left && _focus.x <= right)
           // color = PURPLE;
-          indicators.curRegionID = _regions.GetIndex(&region);
+          indicators.curRegionIDs.push_back(_regions.GetIndex(&region));
       }
 
       // background
@@ -326,7 +326,9 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
   }
 #endif
 
-  indicators.curRegionID = indicators.curSegmentID = indicators.curVertexID = INVALID_INDEX;
+  indicators.curRegionIDs.clear();
+  indicators.curSegmentIDs.clear();
+  indicators.curVertexIDs.clear();
 
   // draw shapes
   size_t i = 0;
@@ -360,43 +362,52 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
      << _nodes.Capability() << std::endl;
   _infoBuf += ss.str();
 
-  if (Finite(indicators.curRegionID))
+  for (const auto &curRegionID : indicators.curRegionIDs)
   {
-    Region &region = _regions[indicators.curRegionID];
-    if (methods.regionDrawer)
+    if (Finite(curRegionID))
     {
-      for (const auto neighborID :
-           {region.highNeighbors[0], region.highNeighbors[1], region.lowNeighbors[0], region.lowNeighbors[1]})
-        if (Finite(neighborID))
-          (*methods.regionDrawer)(_regions[neighborID], "S" + std::to_string(neighborID), PURPLE, true);
-      (*methods.regionDrawer)(region, "S" + std::to_string(indicators.curRegionID), Color(255, 145, 40),
-                              true);
-    }
-    if (methods.segmentDrawer)
-    {
-      if (Finite(region.left))
-        (*methods.segmentDrawer)(_segments[region.left], "e" + std::to_string(region.left), WHITE, true);
-      if (Finite(region.right))
-        (*methods.segmentDrawer)(_segments[region.right], "e" + std::to_string(region.right), WHITE, true);
-    }
-    if (methods.vertexDrawer)
-    {
-      if (Finite(region.low))
-        (*methods.vertexDrawer)(_vertices[region.low], "v" + std::to_string(region.low), WHITE, true);
-      if (Finite(region.high))
-        (*methods.vertexDrawer)(_vertices[region.high], "v" + std::to_string(region.high), WHITE, true);
-    }
+      Region &region = _regions[curRegionID];
+      if (methods.regionDrawer)
+      {
+        for (const auto neighborID : {region.highNeighbors[0], region.highNeighbors[1],
+                                      region.lowNeighbors[0], region.lowNeighbors[1]})
+          if (Finite(neighborID))
+            (*methods.regionDrawer)(_regions[neighborID], "S" + std::to_string(neighborID), PURPLE, true);
+        (*methods.regionDrawer)(region, "S" + std::to_string(curRegionID), Color(255, 145, 40), true);
+      }
+      if (methods.segmentDrawer)
+      {
+        if (Finite(region.left))
+          (*methods.segmentDrawer)(_segments[region.left], "e" + std::to_string(region.left), WHITE, true);
+        if (Finite(region.right))
+          (*methods.segmentDrawer)(_segments[region.right], "e" + std::to_string(region.right), WHITE, true);
+      }
+      if (methods.vertexDrawer)
+      {
+        if (Finite(region.low))
+          (*methods.vertexDrawer)(_vertices[region.low], "v" + std::to_string(region.low), WHITE, true);
+        if (Finite(region.high))
+          (*methods.vertexDrawer)(_vertices[region.high], "v" + std::to_string(region.high), WHITE, true);
+      }
 
-    _infoBuf += "S" + std::to_string(indicators.curRegionID) + ": " + region.ToString() + "\n";
+      _infoBuf += "S" + std::to_string(curRegionID) + ": " + region.ToString() + "\n";
+    }
   }
 
-  if (Finite(indicators.curVertexID) && methods.vertexDrawer)
-  {
-    const Vertex &vertex = _vertices[indicators.curVertexID];
-    (*methods.vertexDrawer)(vertex, "v" + std::to_string(indicators.curVertexID), YELLOW, true);
+  _infoBuf += "\n";
 
-    _infoBuf += "V" + std::to_string(indicators.curVertexID) + ": (" + std::to_string(vertex.x) + ", " +
-                std::to_string(vertex.y) + ")\n";
+  for (const auto curVertexID : indicators.curVertexIDs)
+  {
+    if (Finite(curVertexID) && methods.vertexDrawer)
+    {
+      const Vertex &vertex = _vertices[curVertexID];
+      (*methods.vertexDrawer)(vertex, "v" + std::to_string(curVertexID), YELLOW, true);
+
+      const auto &neis = _lowNeighbors[curVertexID];
+      _infoBuf += "V" + std::to_string(curVertexID) + ": (" + std::to_string(vertex.x) + ", " +
+                  std::to_string(vertex.y) + ") Lower Neighbors: (" + std::to_string(neis.left) + ", " +
+                  std::to_string(neis.mid) + ", " + std::to_string(neis.right) + ")\n";
+    }
   }
 }
 #pragma warning(pop)
