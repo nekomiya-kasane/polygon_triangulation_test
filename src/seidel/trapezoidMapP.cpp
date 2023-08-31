@@ -110,8 +110,8 @@ void TrapezoidMapP::Build()
 #endif
 
   _vertexRegions.resize(_vertices.Size(), ROOT_NODE_ID);
-  _nodes.Reserve(_vertices.Size() * 5 + _segments.Size() * 5 + 6);
-  _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 6);
+  _nodes.Reserve(_vertices.Size() * 5 + _segments.Size() * 5 + 60);
+  _regions.Reserve(_vertices.Size() * 2 + _segments.Size() * 2 + 60);
   _lowNeighbors.resize(_vertices.Size());
 
   // root
@@ -911,11 +911,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           }
           else
           {
-            RegionID _rightRegionID    = _lowNeighbors[LHighID].right;
-            const Region &_rightRegion = _regions[_rightRegionID];
-            leftRegionID               = _rightRegion.left;
-
-            assert(leftSegmentID == _rightRegion.left);
+            leftRegionID = _lowNeighbors[LHighID].mid;
+            assert(leftSegmentID == _regions[leftRegionID].right);
           }
         }
         {
@@ -1172,8 +1169,6 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         _segments[RSegID].lowVertex     = (LDownward == RDownward) ? newVert2ID : newVert1ID;
 
         // find left intersected region
-
-        // find left intersected region
         RegionID zeroRegionID, rightRegionID;
         {
           RegionID _rightRegionID    = _lowNeighbors[RHighID].right;
@@ -1184,11 +1179,8 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
           }
           else
           {
-            RegionID _leftRegionID    = _lowNeighbors[RHighID].left;
-            const Region &_leftRegion = _regions[_leftRegionID];
-            rightRegionID             = _leftRegion.right;
-
-            assert(rightSegmentID == _leftRegion.right);
+            rightRegionID = _lowNeighbors[RHighID].mid;
+            assert(rightSegmentID == _regions[rightRegionID].left);
           }
         }
         {
@@ -1661,6 +1653,9 @@ bool TrapezoidMapP::Intersected(SegmentID segmentID,
   {
     const Vertex &s1 = _vertices[segment.highVertex], &e1 = _vertices[segment.lowVertex],
                  &s2 = _vertices[anotherHighVertexID], &e2 = _vertices[anotherLowVertexID];
+
+    if (s1 == s2 || s1 == e2 || e1 == s2 || e1 == e2)
+      return false;
 
     Vec2 vec1 = e1 - s1, vec2 = e2 - s2, s2s1 = s1 - s2;
     double denom = vec1 ^ vec2, t, s;        // todo: check

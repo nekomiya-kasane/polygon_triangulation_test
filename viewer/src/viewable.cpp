@@ -229,9 +229,9 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       float midX = 0, midY = 0;
       double highY = 0, lowY = 0, lowHighX = 0, lowLowX = 0, highLowX = 0, highHighX = 0;
 
-      highY = !Infinite(region.high) ? y(_vertices[region.high].y) : 0;
-      lowY  = !Infinite(region.low) ? y(_vertices[region.low].y) : _box.y - 5;
-      if (!Infinite(region.left))
+      highY = Finite(region.high) ? y(_vertices[region.high].y) : 0;
+      lowY  = Finite(region.low) ? y(_vertices[region.low].y) : _box.y - 5;
+      if (Finite(region.left))
       {
         const Segment &left = _segments[region.left];
         const Vec2 ll = _vertices[left.lowVertex], lh = _vertices[left.highVertex];
@@ -242,7 +242,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       {
         lowHighX = highHighX = 0;
       }
-      if (!Infinite(region.right))
+      if (Finite(region.right))
       {
         const Segment &right = _segments[region.right];
         const Vec2 rl = _vertices[right.lowVertex], rh = _vertices[right.highVertex];
