@@ -195,7 +195,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
       // indicator
       if (std::abs(_focus.x - x(vertex.x)) <= drawingConfig.vertexRadius &&
           std::abs(_focus.y - y(vertex.y)) <= drawingConfig.vertexRadius)
-        indicators.curVertexIDs.push_back(_vertices.GetIndex(&vertex));
+        indicators.curVertexIDs.insert(_vertices.GetIndex(&vertex));
 
       // draw points
       DrawCircle(x(vertex.x), y(vertex.y), drawingConfig.vertexRadius / _zoom, overrideColor ? color : RED);
@@ -279,7 +279,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
         // assert(right - left > -10);  // strange
         if (_focus.x >= left && _focus.x <= right)
           // color = PURPLE;
-          indicators.curRegionIDs.push_back(_regions.GetIndex(&region));
+          indicators.curRegionIDs.insert(_regions.GetIndex(&region));
       }
 
       // background
@@ -362,8 +362,10 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
      << _nodes.Capability() << std::endl;
   _infoBuf += ss.str();
 
-  for (const auto &curRegionID : indicators.curRegionIDs)
+  for (RegionID curRegionID : indicators.curRegionIDs)
   {
+    _infoBuf += "Current Region: " + std::to_string(curRegionID) + " / " +
+                std::to_string(indicators.curRegionIDs.size()) + "\n";
     if (Finite(curRegionID))
     {
       Region &region = _regions[curRegionID];
@@ -394,9 +396,7 @@ void ViewableTriangulator::Draw(Vec2 centroid, Vec2 factor)
     }
   }
 
-  _infoBuf += "\n";
-
-  for (const auto curVertexID : indicators.curVertexIDs)
+  for (VertexID curVertexID : indicators.curVertexIDs)
   {
     if (Finite(curVertexID) && methods.vertexDrawer)
     {

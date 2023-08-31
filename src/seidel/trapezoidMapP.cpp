@@ -134,6 +134,8 @@ void TrapezoidMapP::Build()
     config.phase = i - 1;
   }
 
+  config.phase = 200;
+
   // leaves
   size_t baseInd = 0;
   while (true)
@@ -1174,19 +1176,19 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
         // find left intersected region
         RegionID zeroRegionID, rightRegionID;
         {
-          RegionID _leftRegionID    = _lowNeighbors[RHighID].left;
-          const Region &_leftRegion = _regions[_leftRegionID];
-          if (_leftRegion.right == rightSegmentID)
+          RegionID _rightRegionID    = _lowNeighbors[RHighID].right;
+          const Region &_rightRegion = _regions[_rightRegionID];
+          if (_rightRegion.left == rightSegmentID)
           {
-            rightRegionID = _leftRegionID;
+            rightRegionID = _rightRegionID;
           }
           else
           {
-            RegionID _rightRegionID    = _lowNeighbors[RHighID].right;
-            const Region &_rightRegion = _regions[_rightRegionID];
-            rightRegionID              = _rightRegion.left;
+            RegionID _leftRegionID    = _lowNeighbors[RHighID].left;
+            const Region &_leftRegion = _regions[_leftRegionID];
+            rightRegionID             = _leftRegion.right;
 
-            assert(rightSegmentID == _rightRegion.left);
+            assert(rightSegmentID == _leftRegion.right);
           }
         }
         {
@@ -1205,25 +1207,7 @@ SegmentID TrapezoidMapP::ResolveIntersection(RegionID curRegionID,
             break;
           }
 
-          // todo: improve this
-          if (rightRegionID == curRegionID)
-          {
-            rightRegionID = _lowNeighbors[RHighID].right;
-            rightRegion   = &_regions[rightRegionID];
-            while (true)
-            {
-              RegionID rightBelowRegionID = rightRegion->lowNeighbors[1];  // right most
-              Region &rightBelowRegion    = _regions[rightBelowRegionID];
-
-              if (!Infinite(rightBelowRegion.low) && Higher(rightRegion->low, newVert2ID))
-              {
-                rightRegionID = rightBelowRegionID;
-                rightRegion   = &rightBelowRegion;
-                continue;
-              }
-              break;
-            }
-          }
+          assert(rightRegionID != curRegionID);
 
           AddVertex(newVert1ID, _regions[curRegionID].nodeID);
           AddVertex(newVert2ID, rightRegion->nodeID);
@@ -1673,7 +1657,7 @@ bool TrapezoidMapP::Intersected(SegmentID segmentID,
 
   bool sleft = Lefter(segment.highVertex, anotherSegmentID),
        eleft = Lefter(segment.lowVertex, anotherSegmentID);
-  if (sleft ^ eleft)  // intersected
+  if (sleft != eleft)  // intersected
   {
     const Vertex &s1 = _vertices[segment.highVertex], &e1 = _vertices[segment.lowVertex],
                  &s2 = _vertices[anotherHighVertexID], &e2 = _vertices[anotherLowVertexID];

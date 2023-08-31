@@ -51,9 +51,9 @@ public:
 
   struct
   {
-    std::vector<VertexID> curVertexIDs   = {};
-    std::vector<SegmentID> curSegmentIDs = {};
-    std::vector<RegionID> curRegionIDs   = {};
+    std::set<VertexID> curVertexIDs   = {};
+    std::set<SegmentID> curSegmentIDs = {};
+    std::set<RegionID> curRegionIDs   = {};
   } indicators;
 
   struct
